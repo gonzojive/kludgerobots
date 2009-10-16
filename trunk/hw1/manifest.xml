@@ -1,0 +1,15 @@
+<package>
+  <description brief="hw2">
+
+     hw2
+
+  </description>
+  <author>chetan</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/hw2</url>
+  <depend package="rospy"/>
+
+</package>
+
+
