@@ -1,14 +1,17 @@
 <package>
-  <description brief="hw2">
+  <description brief="CS225b hw1">
 
-     hw2
+     hw1
 
   </description>
-  <author>chetan</author>
+  <author>Team Kludge</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/hw2</url>
+  <url>http://ros.org/wiki/hw1</url>
+  <depend package="std_msgs"/>
   <depend package="rospy"/>
+  <depend package="sensor_msgs"/>
+  <depend package="rviz"/>
 
 </package>
 

@@ -1,0 +1,9 @@
+RUNNING ROS:
+Launch the console: rxconsole
+Launch the general simulator.
+give execution permissions on the launch file thingie for roslaunch
+
+Launch rviz:
+Follow instructions here: http://www.ros.org/wiki/rviz/UserGuide
+
+Launch the node

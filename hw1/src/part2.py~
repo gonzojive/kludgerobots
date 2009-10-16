@@ -74,7 +74,7 @@ class Part2:
         
         self.robotPosition().resetOdom(trans, rot)
 
-        self.moveToGoalAgent().setGoal( self.robotPosition().globalToLocal([10.0, 0.0]))
+        self.moveToGoalAgent().setGoal( self.robotPosition().globalToLocal([4.0, 0.0]))
 
         # while we are not shutdown by the ROS, keep updating
         while not rospy.is_shutdown():
