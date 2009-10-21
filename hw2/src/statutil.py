@@ -16,13 +16,18 @@ def randomGaussian(mean, standardDeviation):
             break
     return mean + standardDeviation * x1 * math.sqrt (-2.0 * math.log (w) / w);
 
-
 # given an array of N pairs (where first is mean and second is sigma), returns
 # a list of length N with N random gaussians
 def randomMultivariateGaussian(arrayOfMeansAndSigmas):
     return [ randomGaussian(u, sigma) for [u, sigma] in arrayOfMeansAndSigmas];
 
-    
-                                                  
+
+def randomUniform(min, max):
+    return (max - min) * random.random() + min
+
+def randomMultivariateUniform(arrayOfMinMaxes):
+    return [ randomUniform(min, max) for [min, max] in arrayOfMinMaxes]
+
 def ex():
+    randomMultivariateGaussian([ (1.0, 10.0), [-5.0, 2.0], [6.0, .001]])
     return randomGaussian(0.0, 1.0)
