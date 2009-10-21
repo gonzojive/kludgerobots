@@ -92,7 +92,7 @@ class Visualizer:
                              map(vector3d, points))        
         self.pub.publish(marker)
 
-    def vizArrow(self, start, theta, length = 1, idNum = None, color = None):
+    def vizArrow(self, start, theta, length = 1.0, idNum = None, color = None, alpha = None):
         marker = Marker()   # create an empty Marker
         marker.header.frame_id = "/base_laser"  # marker source frame
         marker.header.stamp = rospy.Time()  # timestamp
@@ -114,13 +114,17 @@ class Visualizer:
         marker.pose.orientation.x = quat[1]
         marker.pose.orientation.y = quat[2]
         marker.pose.orientation.z = quat[3]
+        # scale the marker if necessary
+        marker.scale.x = length
+        marker.scale.y = length
+        marker.scale.z = length
         # assign the marker color
         if not color:
             color = [1.0, 1.0, 1.0] # default to a white arrow
         marker.color.r = color[0]
         marker.color.g = color[1]
         marker.color.b = color[2]
-        marker.color.a = 1.0
+        marker.color.a = alpha or 1.0   # if alpha is defined, use that, otherwise use 1.0
         marker.lifetime.secs = .100
         self.pub.publish(marker)
 

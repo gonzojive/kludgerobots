@@ -20,13 +20,19 @@ class Pose:
 class PoseSet:
     # __init__
     # parameter: numPoses = the number of poses, either a list or a total value
-    def __init__(self, numPoses = [20, 20, 10]):    # default to 20 in x and y, 10 in theta
+    def __init__(self, numPoses = [20, 20, 10], viz):    # default to 20 in x and y, 10 in theta
         if not isinstance(numPoses, list):  # if the argument is not a list (it's a number)
             posesPerDim = int(numPoses ** (1.0/3.0) + 0.5)  # nearest perfect cube
             self.numPoses = [posesPerDim, posesPerDim, posesPerDim] # same poses in each dim
         else:   # otherwise, it's a list, just use the values directly
             self.numPoses = numPoses
         self.poses = []
+        self.viz = viz  # the Visualizer object that draws to rviz
+
+    # drawArrows: send each pose out to rviz as an arrow
+    def drawArrows(self):
+        for p in self.poses:
+            self.viz.vizArrow([p.x, p.y], p.theta, length = p.weight)
 
     # initializeUniform: sets a uniform distribution of poses in a given range
     # parameters:
