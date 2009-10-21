@@ -44,9 +44,9 @@ class PoseSet:
         for p in self.poses:
             # calculate the error in each movement
             # once we get the gaussian function, use this here for each variable
-            errTheta1 = 0
-            errDelta = 0
-            errTheta2 = 0
+            errTheta1 = 0   # errTheta1 = gauss(var = sigTheta1*theta1 + sigDeltaOnTheta1*delta)
+            errDelta = 0    # errDelta = gauss(var = sigDelta*delta)
+            errTheta2 = 0   # errTheta2 = gauss(var = sigTheta1OnTheta2*theta1 + sigDeltaOnTheta2*delta + sigTheta2*theta2)
             [dx, dy, dtheta] = motionModelToOdom([theta1+errTheta1, delta+errDelta, theta2+errTheta2])
             p.x += dx
             p.y += dy
@@ -134,6 +134,9 @@ def odomToMotionModel(odomInitial, odomFinal):
     theta2 = da - theta1   # final turn
     return [theta1, delta, theta2]
 
+# motionModelToOdom(): converts from a motion model to odometry
+# parameters:
+#   model   --  the motion model variables [theta1, distance, theta2]
 def motionModelToOdom(model):
     dx = model[1] * math.cos(model[0])
     dy = model[1] * math.sin(model[1])
