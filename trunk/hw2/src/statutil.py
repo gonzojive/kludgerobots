@@ -20,10 +20,8 @@ def randomGaussian(mean, standardDeviation):
 # given an array of N pairs (where first is mean and second is sigma), returns
 # a list of length N with N random gaussians
 def randomMultivariateGaussian(arrayOfMeansAndSigmas):
-    result = []
-    for [mean, standardDeviation] in arrayOfMeansAndSigmas:
-        result += [randomGaussian(mean, standardDeviation)]
-    return result
+    return [ randomGaussian(u, sigma) for [u, sigma] in arrayOfMeansAndSigmas];
+
     
                                                   
 def ex():
