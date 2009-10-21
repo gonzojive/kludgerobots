@@ -46,7 +46,7 @@ class Visualizer:
         marker.color.a = 1.0;
 
     
-    def makeMarker(self, type=Marker.LINE_LIST, name=None, color=None):
+    def makeMarker(self, markerType=Marker.LINE_LIST, name=None, color=None):
         # set the ID from a name
         the_id = None
         if name:
@@ -60,7 +60,7 @@ class Visualizer:
         else:
             marker.id = self.idCounter;
         self.idCounter = self.idCounter + 1
-        marker.type = type;
+        marker.type = markerType;
         marker.action = Marker.ADD;
         marker.pose.position.x = 0;
         marker.pose.position.y = 0;
@@ -81,21 +81,53 @@ class Visualizer:
         return marker
 
     def vizSegment(self, start, end, name=None, color=None):
-        marker = self.makeMarker(type=Marker.LINE_LIST, name=name, color=color)
+        marker = self.makeMarker(markerType=Marker.LINE_LIST, name=name, color=color)
         marker.points = map (lambda pt : Point(x = pt[0], y = pt[1], z = pt[2]),
                              [vector3d(start), vector3d(end)])        
         self.pub.publish(marker)
 
     def vizSegments(self, points, name=None, color=None):
-        marker = self.makeMarker(type=Marker.LINE_STRIP, name=name, color=color)
+        marker = self.makeMarker(markerType=Marker.LINE_STRIP, name=name, color=color)
         marker.points = map (lambda pt : Point(x = pt[0], y = pt[1], z = pt[2]),
                              map(vector3d, points))        
         self.pub.publish(marker)
 
+    def vizArrow(self, start, theta, length = 1, idNum = None, color = None):
+        marker = Marker()   # create an empty Marker
+        marker.header.frame_id = "/base_laser"  # marker source frame
+        marker.header.stamp = rospy.Time()  # timestamp
+        marker.ns = "arrows"    # namespace - might as well make it specific
+        if idNum:   # if the caller wants to specify id numbers so the arrows last until overwritten
+            marker.id = idNum
+        else:   # otherwise, just give it a default number
+            marker.id = self.idCounter
+            self.idCounter += 1
+        marker.type = Marker.ARROW  # arrow type marker
+        marker.action = Marker.ADD  # adding a new marker
+        # assign the marker starting position
+        marker.pose.position.x = start[0]
+        marker.pose.position.y = start[1]
+        marker.pose.position.z = 0
+        # create a quaternion by theta (from params) about the z axis
+        quat = quaternion_about_axis(theta, [0, 0, 1])
+        marker.pose.orientation.w = quat[0]
+        marker.pose.orientation.x = quat[1]
+        marker.pose.orientation.y = quat[2]
+        marker.pose.orientation.z = quat[3]
+        # assign the marker color
+        if not color:
+            color = [1.0, 1.0, 1.0] # default to a white arrow
+        marker.color.r = color[0]
+        marker.color.g = color[1]
+        marker.color.b = color[2]
+        marker.color.a = 1.0
+        marker.lifetime.secs = .100
+        self.pub.publish(marker)
+
     def vizPoints(self, points, the_id=None):
         marker = Marker()
-        marker.header.frame_id = "/base_laser";
-        marker.ns = "basic_shapes";
+        marker.header.frame_id = "/base_laser"
+        marker.ns = "basic_shapes"
         if the_id:
             marker.id = the_id
         else:
@@ -117,7 +149,7 @@ class Visualizer:
         marker.color.g = .40;
         marker.color.b = 0.0;
         marker.color.a = 1.0;
-        marker.lifetime.secs = 700.100
+        marker.lifetime.secs = .100
         marker.points = map (lambda pt : Point(x = pt[0], y = pt[1]), points)
         self.pub.publish(marker)
 
