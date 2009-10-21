@@ -3,7 +3,7 @@
 #import rospy
 #import tf
 import math
-
+import statutil
 
 # class Pose
 #   contains the robot pose info (x position, y position, theta) and a weight
@@ -70,11 +70,58 @@ class PoseSet:
             for j in range(self.numPoses[1]):
                 theta = thetaEnds[0]
                 for k in range(self.numPoses[2]):
-                    self.poses.append([x, y, theta])
+                    self.poses.append(Pose(x, y, theta))
                     theta += thetaInterval
                 y += yInterval
             x += xInterval
+        self.normalizeWeights()
 
+
+    # Initialize the points to a stachastic uniform distribution--randomly choosing points
+    # between given values for x,y, theta
+    # eachof xParams, yParams, and thetaParams are (min, max) pairs
+    #  addes a bunch of poses to the poseSet and normalizes their weights
+    def initializeUniformStochastic(self, xParams, yParams, thetaParams, totalNumPoses):
+        newPoses = [pose for pose in self.generateUniformPoses(xParams, yParams, thetaParams, totalNumPoses)]
+        self.poses += newPoses
+        self.normalizeWeights()
+
+    # initializeGaussian(): sets a uniform distribution of poses in a given range
+    # parameters:
+    #   xParams -- [mean, standard devition] for the x variable
+    #   yParams -- [mean, standard devition] for the y variable
+    #   thetaParams -- [mean, standard devition] for the theta variable
+    # note: as it's written, the distribution includes the start pose but not the end pose
+    # this is to avoid double-counting 0 and 2pi
+    def initializeGaussian(self, xParams, yParams, thetaParams, totalNumPoses):
+        newPoses = [pose for pose in self.generateGaussianPoses(xParams, yParams, thetaParams, totalNumPoses)]
+        self.poses += newPoses
+        self.normalizeWeights()
+
+    # Ensures that the weights sum to 1
+    def normalizeWeights(self):
+        totalWeight = sum([ pose.weight for pose in self.poses])
+        if totalWeight > 0:
+            for pose in self.poses:
+                pose.weight = pose.weight / totalWeight
+
+
+    # initializeGaussian(): sets a uniform distribution of poses in a given range
+    # parameters:
+    #   xParams -- [mean, standard devition] for the x variable
+    #   yParams -- [mean, standard devition] for the y variable
+    #   thetaParams -- [mean, standard devition] for the theta variable
+    # note: as it's written, the distribution includes the start pose but not the end pose
+    # this is to avoid double-counting 0 and 2pi
+    def generateUniformPoses(self, xEnds, yEnds, thetaEnds, totalNumPoses):
+        for i in xrange(0, totalNumPoses):
+            [x, y, theta] = statutil.randomMultivariateUniform([xEnds, yEnds, thetaEnds])
+            yield Pose(x, y, theta)
+
+    def generateGaussianPoses(self, xParams, yParams, thetaParams, totalNumPoses):
+        for i in xrange(0, totalNumPoses):
+            [x, y, theta] = statutil.randomMultivariateGaussian([xParams, yParams, thetaParams])
+            yield Pose(x, y, theta)
 
 # odomToMotionModel(): converts initial and final odom readings into our motion model variables
 # parameters:
