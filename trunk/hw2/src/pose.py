@@ -19,8 +19,8 @@ class Pose:
 #   contains the list of poses
 class PoseSet:
     # __init__
-    # parameter: numPoses = the number of poses, either a list or a total value
-    def __init__(self, numPoses = [20, 20, 10], viz):    # default to 20 in x and y, 10 in theta
+    # parameter(): numPoses = the number of poses, either a list or a total value
+    def __init__(self, viz, numPoses = [20, 20, 10]):    # default to 20 in x and y, 10 in theta
         if not isinstance(numPoses, list):  # if the argument is not a list (it's a number)
             posesPerDim = int(numPoses ** (1.0/3.0) + 0.5)  # nearest perfect cube
             self.numPoses = [posesPerDim, posesPerDim, posesPerDim] # same poses in each dim
@@ -29,12 +29,20 @@ class PoseSet:
         self.poses = []
         self.viz = viz  # the Visualizer object that draws to rviz
 
-    # drawArrows: send each pose out to rviz as an arrow
+    # drawArrows(): send each pose out to rviz as an arrow
     def drawArrows(self):
         for p in self.poses:
             self.viz.vizArrow([p.x, p.y], p.theta, length = p.weight)
 
-    # initializeUniform: sets a uniform distribution of poses in a given range
+    # prediction(): update each pose given old and new odometry readings
+    # parameters:
+    #   x   --  [x0, x1] list of old and new odometry reading
+    #   y   --  [y0, y1] from odometry
+    #   angle   --  [theta0, theta1] from odometry
+    def prediction(self, x, y, angle):
+        [theta1, delta, theta2] = odomToMotionModel(x, y, angle)
+
+    # initializeUniform(): sets a uniform distribution of poses in a given range
     # parameters:
     #   xEnds   --  an [xmin, xmax] list
     #   yEnds   --  a [ymin, ymax] list
@@ -55,3 +63,17 @@ class PoseSet:
                     theta += thetaInterval
                 y += yInterval
             x += xInterval
+
+
+# odomToMotionModel(): converts initial and final odom readings into our motion model variables
+# parameters:
+#   x   --  [x0, x1] from odom
+#   y   --  [y0, y1] from odom
+#   angle   --  [theta0, theta1] from odom
+# returns a list of [initialTurn, distanceTraveled, finalTurn]
+def odomToMotionModel(x, y, angle):
+    [dx, dy, da] = [x[1]-x[0], y[1]-y[0], angle[1]-angle[0]]    # calculate (final - initial)
+    theta1 = math.atan2(dy, dx) - angle[0]  # initial turn
+    delta = math.sqrt(dx*dx + dy*dy)    # distance traveled
+    theta2 = da - theta1   # final turn
+    return [theta1, delta, theta2]
