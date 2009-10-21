@@ -36,11 +36,22 @@ class PoseSet:
 
     # prediction(): update each pose given old and new odometry readings
     # parameters:
-    #   x   --  [x0, x1] list of old and new odometry reading
-    #   y   --  [y0, y1] from odometry
-    #   angle   --  [theta0, theta1] from odometry
-    def prediction(self, x, y, angle):
-        [theta1, delta, theta2] = odomToMotionModel(x, y, angle)
+    #   odomInitial --  an [x, y, angle] list of the previous odometry reading
+    #   odomFinal   --  an [x, y, angle] list of the most recent odometry reading
+    #   Note: Should we use Pose instead of a list? Not sure what format we want odometry in
+    def prediction(self, odomInitial, odomFinal):
+        [theta1, delta, theta2] = odomToMotionModel(odomInitial, odomFinal)    # convert from odom to 2 angles and a distance
+        for p in self.poses:
+            # calculate the error in each movement
+            # once we get the gaussian function, use this here for each variable
+            errTheta1 = 0
+            errDelta = 0
+            errTheta2 = 0
+            [dx, dy, dtheta] = motionModelToOdom([theta1+errTheta1, delta+errDelta, theta2+errTheta2])
+            p.x += dx
+            p.y += dy
+            p.theta += dtheta
+            # update the weights based on the gaussian results?
 
     # initializeUniform(): sets a uniform distribution of poses in a given range
     # parameters:
@@ -67,13 +78,17 @@ class PoseSet:
 
 # odomToMotionModel(): converts initial and final odom readings into our motion model variables
 # parameters:
-#   x   --  [x0, x1] from odom
-#   y   --  [y0, y1] from odom
-#   angle   --  [theta0, theta1] from odom
-# returns a list of [initialTurn, distanceTraveled, finalTurn]
-def odomToMotionModel(x, y, angle):
-    [dx, dy, da] = [x[1]-x[0], y[1]-y[0], angle[1]-angle[0]]    # calculate (final - initial)
-    theta1 = math.atan2(dy, dx) - angle[0]  # initial turn
+#   odomInitial --  [x, y, angle] list of the initial odometry
+#   odomFinal   --  [x, y, angle] list of the final odometry
+def odomToMotionModel(odomInitial, odomFinal):
+    [dx, dy, da] = [odomFinal[0]-odomInitial[0], odomFinal[1]-odomInitial[1], odomFinal[2]-odomInitial[2]]    # calculate (final - initial)
+    theta1 = math.atan2(dy, dx) - odomInitial[2]  # initial turn
     delta = math.sqrt(dx*dx + dy*dy)    # distance traveled
     theta2 = da - theta1   # final turn
     return [theta1, delta, theta2]
+
+def motionModelToOdom(model):
+    dx = model[1] * math.cos(model[0])
+    dy = model[1] * math.sin(model[1])
+    da = model[0] + model[2]
+    return [dx, dy, da]
