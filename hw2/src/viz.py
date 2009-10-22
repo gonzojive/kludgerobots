@@ -8,6 +8,7 @@ import geometry_msgs.msg
 import roslib.msg
 import std_msgs.msg
 import random
+import tf.transformations
 from vector import *
 
 from visualization_msgs.msg import *
@@ -109,7 +110,7 @@ class Visualizer:
         marker.pose.position.y = start[1]
         marker.pose.position.z = 0
         # create a quaternion by theta (from params) about the z axis
-        quat = quaternion_about_axis(theta, [0, 0, 1])
+        quat = tf.transformations.quaternion_about_axis(theta, [0, 0, 1])
         marker.pose.orientation.w = quat[0]
         marker.pose.orientation.x = quat[1]
         marker.pose.orientation.y = quat[2]
