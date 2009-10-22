@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-#import roslib; roslib.load_manifest('hw2')
-#import rospy
-#import tf
 import math
 import statutil
 import motionModel
