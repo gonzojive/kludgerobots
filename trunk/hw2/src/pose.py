@@ -18,20 +18,18 @@ class Pose:
 class PoseSet:
     # __init__
     # parameter(): numPoses = the number of poses, either a list or a total value
-    def __init__(self, viz, err = None, numPoses = [20, 20, 10]):    # default to 20 in x and y, 10 in theta
-        if not isinstance(numPoses, list):  # if the argument is not a list (it's a number)
-            posesPerDim = int(numPoses ** (1.0/3.0) + 0.5)  # nearest perfect cube
-            self.numPoses = [posesPerDim, posesPerDim, posesPerDim] # same poses in each dim
-        else:   # otherwise, it's a list, just use the values directly
-            self.numPoses = numPoses
+    def __init__(self, viz, err = None, numPoses = 3000):    # default to 20 in x and y, 10 in theta
+        self.totalNumPoses = numPoses
         self.poses = []
         self.viz = viz  # the Visualizer object that draws to rviz
         self.error = err or motionModel.ErrorModel()   # with no arguments, we should get 0 variance
 
     # drawArrows(): send each pose out to rviz as an arrow
-    def drawArrows(self):
+    def display(self):
+        idNum = 0
         for p in self.poses:
-            self.viz.vizArrow([p.x, p.y], p.theta, length = p.weight)
+            self.viz.vizArrow([p.x, p.y], p.theta, idNum)
+            idNum += 1
 
     # predictionStep(): update each pose given old and new odometry readings
     # parameters:
@@ -62,15 +60,16 @@ class PoseSet:
     # note: as it's written, the distribution includes the start pose but not the end pose
     # this is to avoid double-counting 0 and 2pi
     def initializeUniform(self, xEnds, yEnds, thetaEnds = [0,2*math.pi]):
-        xInterval = float(xEnds[1] - xEnds[0]) / self.numPoses[0]
-        yInterval = float(yEnds[1] - yEnds[0]) / self.numPoses[1]
-        thetaInterval = float(thetaEnds[1] - thetaEnds[0]) / self.numPoses[2]
+        posesPerDim = int( self.totalNumPoses ** (1.0/3.0) + 0.5 )
+        xInterval = float(xEnds[1] - xEnds[0]) / posesPerDim
+        yInterval = float(yEnds[1] - yEnds[0]) / posesPerDim
+        thetaInterval = float(thetaEnds[1] - thetaEnds[0]) / posesPerDim
         x = xEnds[0]
-        for i in range(self.numPoses[0]):
+        for i in range(posesPerDim):
             y = yEnds[0]
-            for j in range(self.numPoses[1]):
+            for j in range(posesPerDim):
                 theta = thetaEnds[0]
-                for k in range(self.numPoses[2]):
+                for k in range(posesPerDim):
                     self.poses += Pose(x, y, theta)
                     theta += thetaInterval
                 y += yInterval
@@ -82,8 +81,8 @@ class PoseSet:
     # between given values for x,y, theta
     # eachof xParams, yParams, and thetaParams are (min, max) pairs
     #  addes a bunch of poses to the poseSet and normalizes their weights
-    def initializeUniformStochastic(self, xParams, yParams, thetaParams, totalNumPoses):
-        newPoses = [pose for pose in self.generateUniformPoses(xParams, yParams, thetaParams, totalNumPoses)]
+    def initializeUniformStochastic(self, xParams, yParams, thetaParams):
+        newPoses = [pose for pose in self.generateUniformPoses(xParams, yParams, thetaParams, self.totalNumPoses)]
         self.poses += newPoses
         self.normalizeWeights()
 
@@ -94,8 +93,8 @@ class PoseSet:
     #   thetaParams -- [mean, standard devition] for the theta variable
     # note: as it's written, the distribution includes the start pose but not the end pose
     # this is to avoid double-counting 0 and 2pi
-    def initializeGaussian(self, xParams, yParams, thetaParams, totalNumPoses):
-        newPoses = [pose for pose in self.generateGaussianPoses(xParams, yParams, thetaParams, totalNumPoses)]
+    def initializeGaussian(self, xParams, yParams, thetaParams):
+        newPoses = [pose for pose in self.generateGaussianPoses(xParams, yParams, thetaParams, self.totalNumPoses)]
         self.poses += newPoses
         self.normalizeWeights()
 

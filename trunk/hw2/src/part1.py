@@ -7,6 +7,7 @@ import viz
 import pose
 import os
 import move
+import math
 
 from sensor_msgs.msg import LaserScan
 
@@ -28,6 +29,8 @@ class Part1:
     def odoListener(self):
         return self._odoListener
 
+    def initPoses(self):
+        self._poses.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
 
     def initSubscriptions(self):
         # subscribe to laser readings
@@ -45,6 +48,7 @@ class Part1:
     def update(self, trans, rot):
         self.robotPosition().odomReadingNew(trans, rot)
         self._move.publishNextMovement()
+        self._poses.display()
         
     def initNode(self):
         rospy.init_node('kludge2_1')
@@ -63,6 +67,7 @@ class Part1:
                 continue
         
         self.robotPosition().resetOdom(trans, rot)
+        self.initPoses()
 
         #self.moveToGoalAgent().setGoal( self.robotPosition().globalToLocal([10.0, 0.0]))
 
