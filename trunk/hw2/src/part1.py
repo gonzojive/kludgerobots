@@ -18,7 +18,7 @@ class Part1:
         self._odoListener = None
         self._visualizer = viz.Visualizer()
         self._move = move.MoveFromKeyboard(self._visualizer)
-        self._poses = pose.PoseSet(self._visualizer, numPoses = 64) # will eventually want to pass in an error model here as well
+        self._poses = pose.PoseSet(self._visualizer, numPoses = 25) # will eventually want to pass in an error model here as well
 
     def robotPosition(self):
         return self._position
@@ -31,6 +31,7 @@ class Part1:
 
     def initPoses(self):
         self._poses.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
+        self._poses.printPoses()
 
     def initSubscriptions(self):
         # subscribe to laser readings
@@ -69,8 +70,6 @@ class Part1:
         self.robotPosition().resetOdom(trans, rot)
         self.initPoses()
 
-        #self.moveToGoalAgent().setGoal( self.robotPosition().globalToLocal([10.0, 0.0]))
-
         # while we are not shutdown by the ROS, keep updating
         while not rospy.is_shutdown():
             try:
@@ -83,12 +82,8 @@ class Part1:
 
 
 if __name__ == '__main__':
-#    savedTTYState = os.popen('stty -g', 'r').read()
     try:
-#        os.system('stty raw')
         app = Part1()
         app.initNode()
     except rospy.ROSInterruptException:
         pass
-#    finally:
-#        os.system('stty ' + savedTTYState)

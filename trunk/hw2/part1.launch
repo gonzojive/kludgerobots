@@ -1,5 +1,5 @@
 <launch>
-  <node pkg="hw2" type="part1.py">
+  <node pkg="hw2" name="hw2.1" type="part1.py">
     <remap from="laser" to="/base_scan" />
     <remap from="commands" to="/cmd_vel" />
   </node>

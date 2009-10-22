@@ -93,7 +93,7 @@ class Visualizer:
                              map(vector3d, points))        
         self.pub.publish(marker)
 
-    def vizArrow(self, start, theta, length = 1.0, idNum = None, color = None, alpha = None):
+    def vizArrow(self, start, theta, size = [1.0, 1.0, 1.0], idNum = None, color = None, alpha = None):
         marker = Marker()   # create an empty Marker
         marker.header.frame_id = "/base_laser"  # marker source frame
         marker.header.stamp = rospy.Time()  # timestamp
@@ -109,16 +109,16 @@ class Visualizer:
         marker.pose.position.x = start[0]
         marker.pose.position.y = start[1]
         marker.pose.position.z = 0
-        # create a quaternion by theta (from params) about the z axis
-        quat = tf.transformations.quaternion_about_axis(theta, [0, 0, 1])
+        # create a quaternion by theta (from params) about the x axis (not sure why x works, but it does)
+        quat = tf.transformations.quaternion_about_axis(theta, [1, 0, 0])
         marker.pose.orientation.w = quat[0]
         marker.pose.orientation.x = quat[1]
         marker.pose.orientation.y = quat[2]
         marker.pose.orientation.z = quat[3]
         # scale the marker if necessary
-        marker.scale.x = length
-        marker.scale.y = length
-        marker.scale.z = length
+        marker.scale.x = size[0]
+        marker.scale.y = size[1]
+        marker.scale.z = size[2]
         # assign the marker color
         if not color:
             color = [1.0, 1.0, 1.0] # default to a white arrow
@@ -126,7 +126,7 @@ class Visualizer:
         marker.color.g = color[1]
         marker.color.b = color[2]
         marker.color.a = alpha or 1.0   # if alpha is defined, use that, otherwise use 1.0
-        marker.lifetime.secs = .100
+        marker.lifetime = rospy.Duration(1)
         self.pub.publish(marker)
 
     def vizPoints(self, points, the_id=None):
