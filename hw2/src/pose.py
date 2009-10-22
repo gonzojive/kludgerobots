@@ -1,6 +1,8 @@
 import math
 import statutil
 import motionModel
+import rospy
+import util
 
 
 # class Pose
@@ -25,11 +27,17 @@ class PoseSet:
         self.error = err or motionModel.ErrorModel()   # with no arguments, we should get 0 variance
 
     # drawArrows(): send each pose out to rviz as an arrow
-    def display(self):
-        idNum = 0
+    def display(self, type = "arrows"):
+        idNumber = 0
+        if type == "arrows":
+            for p in self.poses:
+                self.viz.vizArrow([p.x, p.y], p.theta, size = [0.2, 0.5, 0.5], idNum = idNumber)
+                idNumber += 1
+
+    def printPoses(self):
+        rospy.loginfo("Pose list (%d poses):", len(self.poses))
         for p in self.poses:
-            self.viz.vizArrow([p.x, p.y], p.theta, idNum)
-            idNum += 1
+            rospy.loginfo("  (%0.2f, %0.2f) at %0.2f degrees - weight = %0.2f", p.x, p.y, util.r2d(p.theta), p.weight)
 
     # predictionStep(): update each pose given old and new odometry readings
     # parameters:
