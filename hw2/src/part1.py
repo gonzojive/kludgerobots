@@ -18,7 +18,7 @@ class Part1:
         self._odoListener = None
         self._visualizer = viz.Visualizer()
         self._move = move.MoveFromKeyboard(self._visualizer)
-        self._poses = pose.PoseSet(self._visualizer, numPoses = 25) # will eventually want to pass in an error model here as well
+        self._poses = None
 
     def robotPosition(self):
         return self._position
@@ -30,6 +30,8 @@ class Part1:
         return self._odoListener
 
     def initPoses(self):
+        # will eventually want to pass in an error model
+        self._poses = pose.PoseSet(self._visualizer, numPoses = 25, odom = self.robotPosition().position())
         self._poses.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
         self._poses.printPoses()
 
@@ -49,6 +51,7 @@ class Part1:
     def update(self, trans, rot):
         self.robotPosition().odomReadingNew(trans, rot)
         self._move.publishNextMovement()
+        self._poses.predictionStep(self.robotPosition().position())
         self._poses.display()
         
     def initNode(self):
