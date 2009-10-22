@@ -43,16 +43,16 @@ class PoseSet:
     #   odomFinal   --  an [x, y, angle] list of the most recent odometry reading
     #   Note: Should we use Pose instead of a list? Not sure what format we want odometry in
     def predictionStep(self, odomInitial, odomFinal):
-        motion = odomToMotionModel(odomInitial, odomFinal)    # convert from odom to 2 angles and a distance
+        motion = motionModel.odomToMotionModel(odomInitial, odomFinal)    # convert from odom to 2 angles and a distance
         for p in self.poses:
             predict = motionModel.Motion(0,0,0)
             # calculate the error in each movement, and make a new estimated motion
             # don't really want to take a square root every time here, can we just use the variance?
-            predict.theta1 = statutil.randomGaussian(motion.theta1, math.sqrt(self.error.theta1Variance(motion))
-            predict.delta = statutil.randomGaussian(motion.delta, math.sqrt(self.error.deltaVariance(motion))
-            predict.theta2 = statutil.randomGaussian(motion.theta2, math.sqrt(self.error.theta2Variance(motion))
+            predict.theta1 = statutil.randomGaussian(motion.theta1, math.sqrt(self.error.theta1Variance(motion)))
+            predict.delta = statutil.randomGaussian(motion.delta, math.sqrt(self.error.deltaVariance(motion)))
+            predict.theta2 = statutil.randomGaussian(motion.theta2, math.sqrt(self.error.theta2Variance(motion)))
             # convert back to odometry pose
-            [dx, dy, dtheta] = motionModelToOdom(predictMotion)
+            [dx, dy, dtheta] = motionModel.motionModelToOdom(predictMotion)
             p.x += dx
             p.y += dy
             p.theta += dtheta
