@@ -18,13 +18,18 @@ class Pose:
 # class PoseSet
 #   contains the list of poses
 class PoseSet:
-    # __init__
-    # parameter(): numPoses = the number of poses, either a list or a total value
-    def __init__(self, viz, err = None, numPoses = 3000):    # default to 20 in x and y, 10 in theta
+    # __init__()
+    # parameters:
+    #   viz --  the visualizer object that draws to rviz
+    #   err --  the error model to use
+    #   numPoses    --  the number of poses to track
+    #   odom    --  the initial odomety reading
+    def __init__(self, viz, err = None, numPoses = 3000, odom = [[0, 0], 0]):
         self.totalNumPoses = numPoses
         self.poses = []
-        self.viz = viz  # the Visualizer object that draws to rviz
+        self.viz = viz
         self.error = err or motionModel.ErrorModel()   # with no arguments, we should get 0 variance
+        self.lastOdom = odom[0] + [odom[1]]  # convert from [[x, y], a] to [x, y, a]
 
     # drawArrows(): send each pose out to rviz as an arrow
     def display(self, type = "arrows"):
@@ -44,8 +49,13 @@ class PoseSet:
     #   odomInitial --  an [x, y, angle] list of the previous odometry reading
     #   odomFinal   --  an [x, y, angle] list of the most recent odometry reading
     #   Note: Should we use Pose instead of a list? Not sure what format we want odometry in
-    def predictionStep(self, odomInitial, odomFinal):
-        motion = motionModel.odomToMotionModel(odomInitial, odomFinal)    # convert from odom to 2 angles and a distance
+    def predictionStep(self, newOdom):
+        odomTriple = newOdom[0] + [newOdom[1]]  # convert from [[x, y], a] to [x, y, a]
+        if max( [abs(x - y) for x, y in zip(self.lastOdom, odomTriple)] ) < 0.01:   # no real movement
+            return
+        # convert from odom to motion model (angle1, distance, angle2)
+        motion = motionModel.odomToMotionModel(self.lastOdom, odomTriple)
+        self.lastOdom = odomTriple  # save this new odometry
         for p in self.poses:
             predict = motionModel.Motion(0,0,0)
             # calculate the error in each movement, and make a new estimated motion
