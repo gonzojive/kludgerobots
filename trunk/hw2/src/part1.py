@@ -8,6 +8,9 @@ import pose
 import os
 import move
 import math
+import motionModel
+import particleFilter
+import threading
 
 from sensor_msgs.msg import LaserScan
 
@@ -18,7 +21,10 @@ class Part1:
         self._odoListener = None
         self._visualizer = viz.Visualizer()
         self._move = move.MoveFromKeyboard(self._visualizer)
-        self._poses = None
+        self._pFilter = None
+        # I have no idea what good error values are
+        #self._motionErr = motionModel.MotionErrorModel(.1, .1, .1, .1, .1, .1)
+        self._motionErr = None  # test only, assumes no error
 
     def robotPosition(self):
         return self._position
@@ -29,11 +35,13 @@ class Part1:
     def odoListener(self):
         return self._odoListener
 
-    def initPoses(self):
+    def initFilter(self):
         # will eventually want to pass in an error model
-        self._poses = pose.PoseSet(self._visualizer, numPoses = 25, odom = self.robotPosition().position())
-        self._poses.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
-        self._poses.printPoses()
+        self._pFilter = particleFilter.ParticleFilter(self.robotPosition().position(), self._visualizer, self._motionErr)
+        self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
+        self._pFilter.displayPoses()
+        self._pFilter.start()   # threading function, calls our overloaded run() function and begins execution
+        #self._pFilter.poseSet.printPoses()
 
     def initSubscriptions(self):
         # subscribe to laser readings
@@ -51,8 +59,7 @@ class Part1:
     def update(self, trans, rot):
         self.robotPosition().odomReadingNew(trans, rot)
         self._move.publishNextMovement()
-        self._poses.predictionStep(self.robotPosition().position())
-        self._poses.display()
+        self._pFilter.receiveOdom(self.robotPosition().position())
         
     def initNode(self):
         rospy.init_node('kludge2_1')
@@ -71,7 +78,7 @@ class Part1:
                 continue
         
         self.robotPosition().resetOdom(trans, rot)
-        self.initPoses()
+        self.initFilter()
 
         # while we are not shutdown by the ROS, keep updating
         while not rospy.is_shutdown():
@@ -81,6 +88,7 @@ class Part1:
                 continue
             
             self.update(trans, rot)
+            pass    # give another thread a chance to run
             rate.sleep()
 
 
@@ -89,4 +97,7 @@ if __name__ == '__main__':
         app = Part1()
         app.initNode()
     except rospy.ROSInterruptException:
-        pass
+        # try to remove our arrows so we don't have to restart roscore
+        # doesn't work :( I'll just put a long timer on the arrows
+        # actually, the IDs are the same, so you can just restart the program
+        app._visualizer.deleteArrows()

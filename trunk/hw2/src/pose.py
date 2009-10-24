@@ -14,6 +14,9 @@ class Pose:
         self.theta = theta
         self.weight = weight
 
+    def toStr(self):
+        return "(%0.2f, %0.2f) at %0.2f degrees - weight = %0.2f" % (self.x, self.y, util.r2d(self.theta), self.weight)
+
 
 # class PoseSet
 #   contains the list of poses
@@ -21,54 +24,30 @@ class PoseSet:
     # __init__()
     # parameters:
     #   viz --  the visualizer object that draws to rviz
-    #   err --  the error model to use
     #   numPoses    --  the number of poses to track
-    #   odom    --  the initial odomety reading
-    def __init__(self, viz, err = None, numPoses = 3000, odom = [[0, 0], 0]):
+    def __init__(self, viz, numPoses = 3000):
         self.totalNumPoses = numPoses
         self.poses = []
         self.viz = viz
-        self.error = err or motionModel.ErrorModel()   # with no arguments, we should get 0 variance
-        self.lastOdom = odom[0] + [odom[1]]  # convert from [[x, y], a] to [x, y, a]
 
     # drawArrows(): send each pose out to rviz as an arrow
+    # this never changes the poses, and it's too large to lock for the whole function, so it may show
+    # inconsistencies if the filter is updating while this is drawing to rviz
     def display(self, type = "arrows"):
-        idNumber = 0
+        idNumber = 1
         if type == "arrows":
             for p in self.poses:
                 self.viz.vizArrow([p.x, p.y], p.theta, size = [0.2, 0.5, 0.5], idNum = idNumber)
                 idNumber += 1
+        elif type == "poses":   # doesn't work yet, for some reason puts poses in the wrong frame
+            self.viz.vizPoseArray(self.poses)
+            
 
     def printPoses(self):
         rospy.loginfo("Pose list (%d poses):", len(self.poses))
         for p in self.poses:
-            rospy.loginfo("  (%0.2f, %0.2f) at %0.2f degrees - weight = %0.2f", p.x, p.y, util.r2d(p.theta), p.weight)
-
-    # predictionStep(): update each pose given old and new odometry readings
-    # parameters:
-    #   odomInitial --  an [x, y, angle] list of the previous odometry reading
-    #   odomFinal   --  an [x, y, angle] list of the most recent odometry reading
-    #   Note: Should we use Pose instead of a list? Not sure what format we want odometry in
-    def predictionStep(self, newOdom):
-        odomTriple = newOdom[0] + [newOdom[1]]  # convert from [[x, y], a] to [x, y, a]
-        if max( [abs(x - y) for x, y in zip(self.lastOdom, odomTriple)] ) < 0.01:   # no real movement
-            return
-        # convert from odom to motion model (angle1, distance, angle2)
-        motion = motionModel.odomToMotionModel(self.lastOdom, odomTriple)
-        self.lastOdom = odomTriple  # save this new odometry
-        for p in self.poses:
-            predict = motionModel.Motion(0,0,0)
-            # calculate the error in each movement, and make a new estimated motion
-            # don't really want to take a square root every time here, can we just use the variance?
-            predict.theta1 = statutil.randomGaussian(motion.theta1, math.sqrt(self.error.theta1Variance(motion)))
-            predict.delta = statutil.randomGaussian(motion.delta, math.sqrt(self.error.deltaVariance(motion)))
-            predict.theta2 = statutil.randomGaussian(motion.theta2, math.sqrt(self.error.theta2Variance(motion)))
-            # convert back to odometry pose
-            [dx, dy, dtheta] = motionModel.motionModelToOdom(predictMotion)
-            p.x += dx
-            p.y += dy
-            p.theta += dtheta
-            # do we update the weights based on the gaussian results?
+            rospy.loginfo(p.toStr())
+                
 
     # initializeUniform(): sets a (deterministic) uniform distribution of poses in a given range
     # parameters:
