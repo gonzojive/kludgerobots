@@ -1,0 +1,6 @@
+image: gates-full.png
+resolution: 0.05
+origin: [17.75, 27.25, 0]
+occupied_thresh: 0.65
+free_thresh: 0.2
+negate: 0
