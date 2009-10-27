@@ -15,7 +15,7 @@ import mapManager
 
 from sensor_msgs.msg import LaserScan
 
-class Part1:
+class Part1():
     def __init__(self):
         self._position = RobotPosition()
         self._laserInterpreter = LaserInterpreter()

@@ -8,23 +8,22 @@ import math
 import mapManager
 
 # Minimum values before we run the filter again
-minimumMovement = .03    # 30 mm - probably want to decrease this when we have more samples
+minimumMovement = .03    # 30 mm - probably want to increase this when we have more samples
 minimumTurn = util.d2r(10)  # 10 degrees
 
 
 class ParticleFilter(threading.Thread):
-    def __init__(self, odom, viz, err = None, fm = None):
+    def __init__(self, odom, viz, err = None):
         threading.Thread.__init__(self) # initialize the threading package
         self.lastOdom = odom[0] + [odom[1]] # convert from [[x, y], a] to [x, y, a]
         self.newOdom = self.lastOdom[:] # makes a deep copy
         self.motionError = err or motionModel.MotionErrorModel()   # with no arguments, we should get 0 variance
-        self.fullMap = fm
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0, 0, 0)
-        self.poseSet = pose.PoseSet(viz, 50)    # 30 poses just for testing purposes
+        self.poseSet = pose.PoseSet(viz, 50)    # 50 poses just for testing purposes
         #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
-        self.poseSet.initializeGaussian( [0.0, .5], [0.0, 0.5], [0.0, math.pi/2.0] )
+        self.poseSet.initializeGaussian( [1, .5], [1, 0.5], [0.0, math.pi/2.0] )
         self.mapManager = mapManager.MapManager()
         self.startTime = rospy.Time.now()
 
@@ -82,11 +81,17 @@ class ParticleFilter(threading.Thread):
             self.poseAverage.y += p.y*p.weight
             self.poseAverage.theta += p.theta*p.weight
             totalWeight += p.weight
-        denom = 1.0/totalWeight
-        self.poseAverage.x *= denom
-        self.poseAverage.y *= denom
-        self.poseAverage.theta = util.normalizeAngle360(self.poseAverage.theta*denom)
-        self.poseAverage.weight = 1
+        if totalWeight < util.NUMERIC_TOL:
+            self.poseAverage.x = 0
+            self.poseAverage.y = 0
+            self.poseAverage.theta = 0
+            self.poseAverage.weight = 0
+        else:
+            denom = 1.0/totalWeight
+            self.poseAverage.x *= denom
+            self.poseAverage.y *= denom
+            self.poseAverage.theta = util.normalizeAngle360(self.poseAverage.theta*denom)
+            self.poseAverage.weight = 1
 
     # predictionStep(): update each pose given old and new odometry readings
     # this function currently does no locking, so it assumes that no other thread is modifying poseSet.
@@ -113,5 +118,5 @@ class ParticleFilter(threading.Thread):
             p.y += dx*sinTheta + dy*cosTheta    # rotate dy into pose frame and add
             p.theta = util.normalizeAngle360(p.theta + dtheta)   # theta adds linearly
             #rospy.loginfo("Pose1: %s", p.toStr())
-        if self.fullMap:    # if we have a valid map, cull the poses that are in illegal positions
-            self.poseSet.poses = filter(lambda p: self.fullMap.inBounds(p), self.poseSet.poses)
+        if self.mapManager:    # if we have a valid map, cull the poses that are in illegal positions
+            self.poseSet.poses = filter(lambda p: self.mapManager.inBounds(p), self.poseSet.poses)
