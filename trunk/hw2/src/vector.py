@@ -26,6 +26,10 @@ def vector_minus(b, a):
     a_to_b = map(lambda acoord, bcoord: bcoord - acoord, a, b)
     return a_to_b
 
+def vector_add(b, a):
+    a_plus_b = map(lambda acoord, bcoord: bcoord + acoord, a, b)
+    return a_plus_b
+
 def vector_scale(v, s):
     return map(lambda x: x * s, v)
 
