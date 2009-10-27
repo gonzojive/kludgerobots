@@ -53,3 +53,9 @@ def normalizeAngle90(rads):
         return pi - rads
     else:
         return rads
+
+def smallestAngleDifference(a1, a2):
+    d1 = normalizeAngle360(a1 - a2)
+    d2 = normalizeAngle360(a2 - a1)
+    return min(d1, d2)
+    

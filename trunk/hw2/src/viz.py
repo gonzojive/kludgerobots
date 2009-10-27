@@ -107,7 +107,7 @@ class Visualizer:
 
     def vizArrow(self, start, theta, size = [1.0, 1.0, 1.0], idNum = None, color = None, alpha = None):
         marker = Marker()   # create an empty Marker
-        marker.header.frame_id = "/odom"  # marker source frame
+        marker.header.frame_id = "/map"  # marker source frame
         #marker.header.stamp = rospy.Time()  # timestamp - I think ros automatically adds these
         marker.ns = "arrows"    # namespace - might as well make it specific
         if idNum:   # if the caller wants to specify id numbers so the arrows last until overwritten
@@ -141,7 +141,7 @@ class Visualizer:
         marker.color.g = color[1]
         marker.color.b = color[2]
         marker.color.a = alpha or 1.0   # if alpha is defined, use that, otherwise use 1.0
-        marker.lifetime = rospy.Duration(30) # 30 seconds
+        marker.lifetime = rospy.Duration(0) # will live forever
         self.pub.publish(marker)
 
     def vizPoseArray(self, poses):

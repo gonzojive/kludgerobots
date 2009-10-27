@@ -33,14 +33,18 @@ class PoseSet:
     # drawArrows(): send each pose out to rviz as an arrow
     # this never changes the poses, and it's too large to lock for the whole function, so it may show
     # inconsistencies if the filter is updating while this is drawing to rviz
-    def display(self, type = "arrows"):
+    def display(self, type = "arrows", displayColor = None):
         idNumber = 1
         if type == "arrows":
             for p in self.poses:
-                self.viz.vizArrow([p.x, p.y], p.theta, size = [0.2, 0.5, 0.5], idNum = idNumber)
+                self.viz.vizArrow([p.x, p.y], p.theta, size = [0.2, 0.5, 0.5], idNum = idNumber, color = displayColor)
                 idNumber += 1
         elif type == "poses":   # doesn't work yet, for some reason puts poses in the wrong frame
             self.viz.vizPoseArray(self.poses)
+
+    def displayOne(self, p, displayColor = None):
+        idNumber = len(self.poses) + 1
+        self.viz.vizArrow([p.x, p.y], p.theta, size = [0.2, 0.5, 0.5], idNum = idNumber, color = displayColor)
             
 
     def printPoses(self):

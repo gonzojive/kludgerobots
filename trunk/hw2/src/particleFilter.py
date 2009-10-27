@@ -21,11 +21,13 @@ class ParticleFilter(threading.Thread):
         self.fullMap = fm
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
+        self.poseAverage = pose.Pose(0, 0, 0)
 
     # displayPoses(): draws the current poseSet to rviz
     # may exhibit odd behavior while the filter is updating poses; see pose.py
     def displayPoses(self):
         self.poseSet.display()
+        self.poseSet.displayOne(self.poseAverage, displayColor = [0, 0, 1])
 
     # receiveOdom(): updates the particle filter with the newest odometry reading
     # if the new reading is different enough, run the filter
@@ -34,8 +36,11 @@ class ParticleFilter(threading.Thread):
     def receiveOdom(self, odom):
         self.runFilterLock.acquire()    # <---grab the lock--->
         self.newOdom = odom[0] + [odom[1]]  # convert from [[x, y], a] to [x, y, a]
-        if self.runFilter == 0 and (abs(self.newOdom[0]-self.lastOdom[0])+abs(self.newOdom[1]-self.lastOdom[1]) > minimumMovement or abs(self.newOdom[2]-self.lastOdom[2]) > minimumTurn):
-            self.runFilter = 1  # run the filter next time the thread opens up
+        if self.runFilter == 0:
+            manhattanDist = abs(self.newOdom[0]-self.lastOdom[0])+abs(self.newOdom[1]-self.lastOdom[1])
+            angleDiff = util.smallestAngleDifference(self.newOdom[2], self.lastOdom[2])
+            if manhattanDist >= minimumMovement or angleDiff >= minimumTurn:
+                self.runFilter = 1  # run the filter next time the thread opens up
         self.runFilterLock.release()    # <---release the lock--->
             
 
@@ -57,7 +62,22 @@ class ParticleFilter(threading.Thread):
             self.runFilter = 0  # reset the filter flag
             self.runFilterLock.release()    #  <---release the lock--->
             self.predictionStep(motion)
+            self.updatePoseAverage()
             self.displayPoses() # poses have changed, so draw the new ones
+
+    def updatePoseAverage(self):
+        self.poseAverage = pose.Pose(0,0,0)
+        totalWeight = 0
+        for p in self.poseSet.poses:
+            self.poseAverage.x += p.x
+            self.poseAverage.y += p.y
+            self.poseAverage.theta += p.theta
+            totalWeight += p.weight
+        denom = 1.0/totalWeight
+        self.poseAverage.x *= denom
+        self.poseAverage.y *= denom
+        self.poseAverage.theta *= denom
+        self.poseAverage.weight = 1
 
     # predictionStep(): update each pose given old and new odometry readings
     # this function currently does no locking, so it assumes that no other thread is modifying poseSet.
@@ -82,7 +102,7 @@ class ParticleFilter(threading.Thread):
             cosTheta = math.cos(p.theta)    # cos of the current pose angle
             p.x += dx*cosTheta - dy*sinTheta    # rotate dx into pose frame and add
             p.y += dx*sinTheta + dy*cosTheta    # rotate dy into pose frame and add
-            p.theta += dtheta   # theta adds linearly
+            p.theta = util.normalizeAngle360(p.theta + dtheta)   # theta adds linearly
             #rospy.loginfo("Pose1: %s", p.toStr())
         if self.fullMap:    # if we have a valid map, cull the poses that are in illegal positions
             self.poseSet.poses = filter(lambda p: self.fullMap.inBounds(p), self.poseSet.poses)
