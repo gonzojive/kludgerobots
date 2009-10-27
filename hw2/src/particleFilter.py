@@ -6,6 +6,7 @@ import statutil
 import motionModel
 import math
 import mapManager
+import raycast
 
 # Minimum values before we run the filter again
 minimumMovement = .03    # 30 mm - probably want to increase this when we have more samples
@@ -13,11 +14,12 @@ minimumTurn = util.d2r(10)  # 10 degrees
 
 
 class ParticleFilter(threading.Thread):
-    def __init__(self, odom, viz, err = None):
+    def __init__(self, odom, viz, motionErr, transformer):
         threading.Thread.__init__(self) # initialize the threading package
+        self.transformer = transformer
         self.lastOdom = odom[0] + [odom[1]] # convert from [[x, y], a] to [x, y, a]
         self.newOdom = self.lastOdom[:] # makes a deep copy
-        self.motionError = err or motionModel.MotionErrorModel()   # with no arguments, we should get 0 variance
+        self.motionError = motionErr or motionModel.MotionErrorModel()   # with no arguments, we should get 0 variance
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0, 0, 0)
@@ -26,6 +28,7 @@ class ParticleFilter(threading.Thread):
         self.poseSet.initializeGaussian( [1, .5], [1, 0.5], [0.0, math.pi/2.0] )
         self.mapManager = mapManager.MapManager()
         self.startTime = rospy.Time.now()
+        self.mapRayCaster = raycast.MapRayCaster()
 
     # displayPoses(): draws the current poseSet to rviz
     # may exhibit odd behavior while the filter is updating poses; see pose.py
@@ -33,11 +36,27 @@ class ParticleFilter(threading.Thread):
         self.poseSet.display()
         self.poseSet.displayOne(self.poseAverage, displayColor = [0, 0, 1])
 
+    def robotToMapFrame(self, pt):
+        msg = geometry_msgs.msg.PointStamped()
+        msg.header.frame_id = "base_laser"
+        msg.point.x = pt[0]
+        msg.point.y = pt[1]
+        msg.point.z = pt[2]
+        msg_in_my_frame = self.transformer.transformPoint(msg, "map")
+        return [msg.point.x, msg.point.y, msg.point.z]
+
+    def testCaster(self):
+        if self.mapRayCaster.initializedp():
+            # create a vector from the perspective of the robot
+            robotOrigin = robotToMapFrame([1.0, 0.0, 0.0])
+            rospy.loginfo("0,0 in map frame: [%0.2f, %0.2f]", robotOrigin[0], robotOrigin[1])
+            #rospy.loginfo("Casting ray forard:Motion: %s", predict.toStr())    
     # receiveOdom(): updates the particle filter with the newest odometry reading
     # if the new reading is different enough, run the filter
     # parameters:
     #   odom -- the new odometry reading, currently in [[x, y], angle] format
     def receiveOdom(self, odom):
+        self.testCaster()
         self.runFilterLock.acquire()    # <---grab the lock--->
         self.newOdom = odom[0] + [odom[1]]  # convert from [[x, y], a] to [x, y, a]
         if self.runFilter == 0:

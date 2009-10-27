@@ -3,6 +3,7 @@ import tf
 import threading
 from vector import *
 import nav_msgs
+import nav_msgs.msg
 import geometry_msgs
 
 def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
@@ -19,7 +20,7 @@ def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
 
 class MapRayCaster:
     def __init__(self):
-        self._initialized
+        self._initialized = False
 
         def mapCallback(mapOccGrid):
             self.mapMetaData = mapOccGrid.info
@@ -27,10 +28,10 @@ class MapRayCaster:
             self._annotateMapMetaData()
             self._initialized = True
 
-        rospy.Subscriber("map", nav_msgs.OccupancyGrid, mapCallback) # listen to "laser"
+        rospy.Subscriber("map", nav_msgs.msg.OccupancyGrid, mapCallback) # listen to "laser"
 
     def _annotateMapMetaData(self):
-        meta = this.mapMetaData
+        meta = self.mapMetaData
 
         # FIXME: account for the orientation of the map
         resolution = meta.resolution
@@ -60,7 +61,7 @@ class MapRayCaster:
     # returns whether the map at the given point is occupied
     def probeAtPoint(self, pt):
         # here we the
-        meta = this.mapMetaData
+        meta = self.mapMetaData
         xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  meta.xMin, meta.xMax, meta.width)
         yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  meta.yMin, meta.yMax, meta.height)
         # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
@@ -75,7 +76,7 @@ class MapRayCaster:
     # before bumping into an obstacle
     def castVector(self, vStart, vEnd):
         # v is the vector to cast relative to vStart
-        v = vector_minus(vEnd, vStart))
+        v = vector_minus(vEnd, vStart)
         vMagnitude = vector_length(v)
         # v normalized
         vUnit = vector_normalize(v)
