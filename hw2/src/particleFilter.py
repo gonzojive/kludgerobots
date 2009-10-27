@@ -15,7 +15,6 @@ minimumTurn = util.d2r(10)  # 10 degrees
 class ParticleFilter(threading.Thread):
     def __init__(self, odom, viz, err = None, fm = None):
         threading.Thread.__init__(self) # initialize the threading package
-        self.poseSet = pose.PoseSet(viz, 30)    # 30 poses just for testing purposes
         self.lastOdom = odom[0] + [odom[1]] # convert from [[x, y], a] to [x, y, a]
         self.newOdom = self.lastOdom[:] # makes a deep copy
         self.motionError = err or motionModel.MotionErrorModel()   # with no arguments, we should get 0 variance
@@ -23,6 +22,9 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0, 0, 0)
+        self.poseSet = pose.PoseSet(viz, 50)    # 30 poses just for testing purposes
+        #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
+        self.poseSet.initializeGaussian( [0.0, .5], [0.0, 0.5], [0.0, math.pi/2.0] )
         self.mapManager = mapManager.MapManager()
         self.startTime = rospy.Time.now()
 
