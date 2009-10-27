@@ -39,6 +39,7 @@ class Part1:
         # will eventually want to pass in an error model
         self._pFilter = particleFilter.ParticleFilter(self.robotPosition().position(), self._visualizer, self._motionErr)
         self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
+        self._pFilter.updatePoseAverage()    # initialize the best guess
         self._pFilter.displayPoses()
         self._pFilter.start()   # threading function, calls our overloaded run() function and begins execution
         #self._pFilter.poseSet.printPoses()
