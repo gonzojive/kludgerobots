@@ -11,6 +11,7 @@ import math
 import motionModel
 import particleFilter
 import threading
+import mapManager
 
 from sensor_msgs.msg import LaserScan
 
@@ -39,7 +40,7 @@ class Part1:
         # will eventually want to pass in an error model
         self._pFilter = particleFilter.ParticleFilter(self.robotPosition().position(), self._visualizer, self._motionErr)
         self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
-        self._pFilter.updatePoseAverage()    # initialize the best guess
+        self._pFilter.updateMapTf()    # initialize the best guess and sent it to tf
         self._pFilter.displayPoses()
         self._pFilter.start()   # threading function, calls our overloaded run() function and begins execution
         #self._pFilter.poseSet.printPoses()
@@ -61,6 +62,7 @@ class Part1:
         self.robotPosition().odomReadingNew(trans, rot)
         self._move.publishNextMovement()
         self._pFilter.receiveOdom(self.robotPosition().position())
+        self._pFilter.mapManager.broadcast()
         
     def initNode(self):
         rospy.init_node('kludge2_1')

@@ -5,6 +5,7 @@ import util
 import statutil
 import motionModel
 import math
+import mapManager
 
 # Minimum values before we run the filter again
 minimumMovement = .03    # 30 mm - probably want to decrease this when we have more samples
@@ -22,6 +23,8 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0, 0, 0)
+        self.mapManager = mapManager.MapManager()
+        self.startTime = rospy.Time.now()
 
     # displayPoses(): draws the current poseSet to rviz
     # may exhibit odd behavior while the filter is updating poses; see pose.py
@@ -42,7 +45,6 @@ class ParticleFilter(threading.Thread):
             if manhattanDist >= minimumMovement or angleDiff >= minimumTurn:
                 self.runFilter = 1  # run the filter next time the thread opens up
         self.runFilterLock.release()    # <---release the lock--->
-            
 
     # run(): the main threading call
     # does a busy wait until needed, which is wasteful, but the alternative is to use events, where the danger is
@@ -61,22 +63,27 @@ class ParticleFilter(threading.Thread):
             self.lastOdom = self.newOdom[:]  # save this new odometry
             self.runFilter = 0  # reset the filter flag
             self.runFilterLock.release()    #  <---release the lock--->
+            self.startTime = rospy.Time.now()
             self.predictionStep(motion)
-            self.updatePoseAverage()
+            self.updateMapTf()
             self.displayPoses() # poses have changed, so draw the new ones
+
+    def updateMapTf(self):
+        self.updatePoseAverage()
+        self.mapManager.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
 
     def updatePoseAverage(self):
         self.poseAverage = pose.Pose(0,0,0)
         totalWeight = 0
         for p in self.poseSet.poses:
-            self.poseAverage.x += p.x
-            self.poseAverage.y += p.y
-            self.poseAverage.theta += p.theta
+            self.poseAverage.x += p.x*p.weight
+            self.poseAverage.y += p.y*p.weight
+            self.poseAverage.theta += p.theta*p.weight
             totalWeight += p.weight
         denom = 1.0/totalWeight
         self.poseAverage.x *= denom
         self.poseAverage.y *= denom
-        self.poseAverage.theta *= denom
+        self.poseAverage.theta = util.normalizeAngle360(self.poseAverage.theta*denom)
         self.poseAverage.weight = 1
 
     # predictionStep(): update each pose given old and new odometry readings
