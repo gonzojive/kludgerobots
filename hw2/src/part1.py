@@ -12,6 +12,8 @@ import motionModel
 import particleFilter
 import threading
 import mapManager
+import geometry_msgs
+import nav_msgs
 
 from sensor_msgs.msg import LaserScan
 
