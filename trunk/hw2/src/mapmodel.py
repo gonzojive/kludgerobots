@@ -113,7 +113,6 @@ class MapModel:
                 return False
 
         boolgrid = map(obstaclepFromProbability, self.grid)
-        distgrid = [ 10.0 for x in boolgrid]
 
         # given discrete grid indexes returns these functions 
         def gridValueAtDiscreteCoordinate(grid, xDiscrete, yDiscrete):
@@ -122,33 +121,63 @@ class MapModel:
         def setGridValueAtDiscreteCoordinate(grid, xDiscrete, yDiscrete, value):
             grid[yDiscrete * self.mapMetaData.width + xDiscrete] = value
 
+        numWildFireUpdates = min(self.mapMetaData.height, self.mapMetaData.width)
 
-        # gotta love O(n^4)
-        for xDiscrete in xrange(0, self.mapMetaData.width):
-            for yDiscrete in xrange(0, self.mapMetaData.height):
-                bestDistanceSquared = None
+        def allDiscreteGridCoordinates():
+            for xDiscrete in xrange(0, self.mapMetaData.width):
+                for yDiscrete in xrange(0, self.mapMetaData.height):
+                    yield [xDiscrete, yDiscrete]
 
-                fpoint = discreteGridRefToReal(xDiscrete, yDiscrete)
-                
-                for xDiscreteCandidate in xrange(0, self.mapMetaData.width):
-                    for yDiscreteCandidate in xrange(0, self.mapMetaData.height):
-                        obstaclep = gridValueAtDiscreteCoordinate(boolgrid, xDiscreteCandidate, yDiscreteCandidate)
-                        if obstaclep:
-                            # compute distance to obstacle
-                            fcandidate = discreteGridRefToReal( xDiscreteCandidate, yDiscreteCandidate)
-                            candidateDistanceSquared = vector_length_squared(vector_minus(fpoint, fcandidate))
-                            # see if it's the best found so far
-                            if not bestDistanceSquared or candidateDistanceSquared < bestDistanceSquared:
-                                bestDistanceSquared = candidateDistanceSquared
-                setGridValueAtDiscreteCoordinate(distgrid, xDiscrete, yDiscrete, math.sqrt(bestDistanceSquared))
+        nearestObstacleGrid = boolgrid[:]
+
+        # Initially set the nearest obstacle at each point to itself
+        # if there is an obstacle there, or none if there is not an
+        # obstacle there
+        for [xDiscrete, yDiscrete] in allDiscreteGridCoordinates():
+            nearestObstacle = None
+            if gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete):
+                nearestObstacle = discreteGridRefToReal(xDiscrete, yDiscrete)
+            setGridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete, nearestObstacle)
+
+        # returns a list of obstacles that surround the given grid coordinate
+        def knownNearbyObstacles(xDiscrete, yDiscrete):
+            def pts ():
+                for i in xrange(max(0, xDiscrete), min(xDiscrete+1, self.meta.width - 1)):
+                    for j in xrange(max(0, yDiscrete), min(yDiscrete+1, self.meta.height - 1)):
+                        yield [i, j]
+
+            return [gridValueAtDiscreteCoordinate(nearestObstacleGrid, x, y) for [x, y] in pts()]
         
+        for i in xrange(0, numWildFireUpdates):
+            for [xDiscrete, yDiscrete] in allDiscreteGridCoordinates():
+                # point in space does this grid coordinate corresponds to
+                realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
+                # keep track of the closest obstacle
+                nearestObstacle = None
+                nearestObstacleDistSquared = -1
+                # get a list of obstacles that are near neighboring cells
+                nearbyObstacles = knownNearbyObstacles(xDiscrete, yDiscrete)
+
+                for nearbyObstacle in nearbyObstacles:
+                    if nearbyObstacle:
+                        vToNearbyObstcle = vector_minus(nearbyObstacle, realPoint)
+                        nearbyObstacleDistSquared = vector_length_squared(vToNearbyObstcle)
+                        if not nearestObstacle or nearbyObstacleDistSquared < nearestObstacleDistSquared:
+                            nearestObstacleDistSquared = nearbyObstacleDistSquared
+                            nearestObstacle = nearbyObstacle
+                setGridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete, nearestObstacle)
+
+        distgrid = nearestObstacleGrid[:]
+        # given the grid that maps points to nearest obstacles,
+        # compute the actual distance from each cell to its nearest
+        # obstacle and return a grid with the result
+        for [xDiscrete, yDiscrete] in allDiscreteGridCoordinates():
+            realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
+            nearestObstacle = gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete)
+            vToNearbyObstcle = vector_minus(nearbyObstacle, realPoint)
+            nearbyObstacleDist = vector_length(vToNearestObstcle)
+            setGridValueAtDiscreteCoordinate(distgrid, xDiscrete, yDiscrete, nearbyObstacleDist)
         return distgrid
-                            
-                        
-                
-            
-        
-        
 
 
     def initializedp(self):
