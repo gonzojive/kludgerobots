@@ -96,14 +96,19 @@ class Visualizer:
                              map(vector3d, points))        
         self.pub.publish(marker)
 
-    def deleteArrows(self):
-        rospy.loginfo("Deleting arrows")
+    def deleteArrow(self, idNum):
+        #rospy.loginfo("Deleting arrows")
         marker = Marker()
+        marker.header.frame_id = "/map"
         marker.ns = "arrows"
         marker.action = Marker.DELETE
+        marker.type = Marker.ARROW
+        marker.id = idNum
+        self.pub.publish(marker)
+
+    def deleteArrows(self):
         for i in range(self.arrowIDMax+1):
-            marker.id = i
-            self.pub.publish(marker)
+            self.deleteArrow(i)
 
     def vizArrow(self, start, theta, size = [1.0, 1.0, 1.0], idNum = None, color = None, alpha = None):
         marker = Marker()   # create an empty Marker

@@ -143,5 +143,9 @@ class ParticleFilter(threading.Thread):
             p.y += dx*sinTheta + dy*cosTheta    # rotate dy into pose frame and add
             p.theta = util.normalizeAngle360(p.theta + dtheta)   # theta adds linearly
             #rospy.loginfo("Pose1: %s", p.toStr())
+            self.cullIllegalPoses()
+
+
+    def cullIllegalPoses(self):
         if self.mapModel:    # if we have a valid map, cull the poses that are in illegal positions
             self.poseSet.poses = filter(lambda p: self.mapModel.inBounds(p), self.poseSet.poses)

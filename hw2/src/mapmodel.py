@@ -21,8 +21,6 @@ def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
 class MapModel:
     def __init__(self, initialPose):
         self._initialized = False
-
-        # parameters used to discretize floating point map coords into buckets
         self.fHeight = 10.0
         self.fWidth = 10.0
         self.xMax = 0.0
@@ -38,17 +36,12 @@ class MapModel:
 
         def mapCallback(mapOccGrid):
             self.mapMetaData = mapOccGrid.info
-            self.grid = mapOccGrid.data
+            self.grid = mapOccGrid.data[:]
             self._annotateMapMetaData()
-            rospy.loginfo("Computing obstacle distance grid: %i x %i grid", self.mapMetaData.width, self.mapMetaData.height)
-            
-            #self.dgrid = self.computeDistanceFromObstacleGrid()
-            rospy.loginfo("Initialized Map completedly")
             self._initialized = True
 
         rospy.Subscriber("map", nav_msgs.msg.OccupancyGrid, mapCallback) # listen to "map"
         self.broadcast()
-
 
     # updateMapToOdomTf(): calculate the new map->odom transformation
     # parameters:
@@ -77,8 +70,6 @@ class MapModel:
     def inBounds(self, pose):
         return self.probeAtPoint([pose.x, pose.y]) < 0.5
 
-
-    # computes some initial values
     def _annotateMapMetaData(self):
         meta = self.mapMetaData
 
@@ -201,7 +192,9 @@ class MapModel:
         yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, meta.height)
         # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
-        probabilityOfOccupancy = self.grid[yDiscrete * meta.width + xDiscrete]
+        probabilityOfOccupancy = ord(self.grid[yDiscrete * meta.width + xDiscrete])
+        #rospy.loginfo("xD = %d, yD = %d", xDiscrete, yDiscrete)       
+        #rospy.loginfo("val = %d", ord(probabilityOfOccupancy))
         if probabilityOfOccupancy < 0:
            probabilityOfOccupancy = 100
 
