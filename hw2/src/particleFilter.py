@@ -182,18 +182,26 @@ class ParticleFilter(threading.Thread):
         laserBeamVectors = laser.laserScanToVectors(laserScan)
         pLaserBeamsGivenPose = [self.pLaserBeamGivenPose(vLaserBeam, pose) for vLaserBeam in laserBeamVectors]
         product = 1.0
+        n = 0
         for p in pLaserBeamsGivenPose:
             product *= p
+            n += 1
+            rospy.loginfo("product %i = %f * %f", n, product, p)
+            if n > 2:
+                break
         return product
 
     def pLaserBeamGivenPose(self, vLaserBeam, pose):
         vLaserBeamInMapFrame = pose.inMapFrame(vLaserBeam)
         d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
-        stdDev = .34
+        stdDev = 1.34
         pGauss = statutil.gaussianProbability(0, stdDev, d)
         pUniform = 1.0/12.0
         weightGauss = .1
         weightUniform = .9
+
+        rospy.loginfo("pGauss: %f", pGauss)
+
         return weightGauss*pGauss + weightUniform*pUniform
         
     def cullIllegalPoses(self):
