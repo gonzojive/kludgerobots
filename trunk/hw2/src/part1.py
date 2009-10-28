@@ -11,7 +11,7 @@ import math
 import motionModel
 import particleFilter
 import threading
-import mapManager
+import mapmodel
 import geometry_msgs
 import nav_msgs
 
@@ -63,7 +63,7 @@ class Part1():
         self.robotPosition().odomReadingNew(trans, rot)
         self._move.publishNextMovement()
         self._pFilter.receiveOdom(self.robotPosition().position())
-        self._pFilter.mapManager.broadcast()
+        self._pFilter.mapModel.broadcast()
         
     def initNode(self):
         rospy.init_node('kludge2_1')

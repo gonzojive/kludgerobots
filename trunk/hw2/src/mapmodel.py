@@ -19,7 +19,7 @@ def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
 
 
 class MapModel:
-    def __init__(self):
+    def __init__(self, initialPose):
         self._initialized = False
 
         # parameters used to discretize floating point map coords into buckets
@@ -29,6 +29,12 @@ class MapModel:
         self.xMin = 0.0
         self.yMin = 0.0
         self.yMin = 0.0
+
+        self.tfBroadcaster = tf.TransformBroadcaster()
+        self.currentTf = [[initialPose[0], initialPose[1], 0], tf.transformations.quaternion_about_axis(initialPose[2], [0, 0, 1]), rospy.Time.now()]
+        #rospy.loginfo("Initial tf: (%0.2f, %0.2f), angle = %0.2f", initialPose[0], initialPose[1], util.r2d(initialPose[2]))
+        self.tempTf = self.currentTf[:]
+        self.tfLock = threading.Lock()  # needed in case the main thread and the filter access it at the same time
 
         def mapCallback(mapOccGrid):
             self.mapMetaData = mapOccGrid.info
@@ -40,7 +46,37 @@ class MapModel:
             rospy.loginfo("Initialized Map completedly")
             self._initialized = True
 
-        rospy.Subscriber("map", nav_msgs.msg.OccupancyGrid, mapCallback) # listen to "laser"
+        rospy.Subscriber("map", nav_msgs.msg.OccupancyGrid, mapCallback) # listen to "map"
+        self.broadcast()
+
+
+    # updateMapToOdomTf(): calculate the new map->odom transformation
+    # parameters:
+    #   pose -- the current best guess pose (assumed to be in map coordinates)
+    #   odom -- the current odometry values
+    #   time -- the time at which these values were calculated
+    def updateMapToOdomTf(self, pose, odom, time = None):
+        self.tempTf[0][0] = pose.x - odom[0]
+        self.tempTf[0][1] = pose.y - odom[1]
+        self.tempTf[2] = time or rospy.Time.now()
+        self.tempTf[1] = tf.transformations.quaternion_about_axis(pose.theta-odom[2], [0, 0, 1])
+        self.tfLock.acquire()   # <--- grab the lock --->
+        self.currentTf = self.tempTf[:]  # deep copy
+        self.tfLock.release()   # <--- release the lock --->
+
+    # broadcast(): send out the newest transform to tf
+    def broadcast(self):
+        self.tfLock.acquire()   # <--- grab the lock --->
+        self.tfBroadcaster.sendTransform(self.currentTf[0], self.currentTf[1], self.currentTf[2], "odom", "map")
+        self.tfLock.release()   # <--- release the lock --->
+        #rospy.loginfo("Sent broadcast")
+
+    # inBounds(): returns True if a given pose is in a legal position on the map
+    # parameters:
+    #   pose -- the pose to check against the map (assumed to be in map coordinates)
+    def inBounds(self, pose):
+        return self.probeAtPoint([pose.x, pose.y]) < 0.5
+
 
     # computes some initial values
     def _annotateMapMetaData(self):
@@ -136,7 +172,7 @@ class MapModel:
         yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, meta.height)
         # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
-        probabilityOfOccupancy = self.grid[yDiscrete * self.mapMetaData.width + xDiscrete]
+        probabilityOfOccupancy = self.grid[yDiscrete * meta.width + xDiscrete]
         if probabilityOfOccupancy < 0:
            probabilityOfOccupancy = 100
 
