@@ -18,7 +18,7 @@ def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
         return iBucket
 
 
-class MapRayCaster:
+class MapModel:
     def __init__(self):
         self._initialized = False
 

@@ -6,7 +6,7 @@ import statutil
 import motionModel
 import math
 import mapManager
-import raycast
+import mapmodel
 import geometry_msgs
 import geometry_msgs.msg
 # Minimum values before we run the filter again
@@ -29,7 +29,7 @@ class ParticleFilter(threading.Thread):
         self.poseSet.initializeGaussian( [1, .5], [1, 0.5], [0.0, math.pi/2.0] )
         self.mapManager = mapManager.MapManager()
         self.startTime = rospy.Time.now()
-        self.mapRayCaster = raycast.MapRayCaster()
+        self.mapModel = mapmodel.MapModel()
 
     # displayPoses(): draws the current poseSet to rviz
     # may exhibit odd behavior while the filter is updating poses; see pose.py
@@ -49,7 +49,7 @@ class ParticleFilter(threading.Thread):
         return [ptOut.x, ptOut.y, ptOut.z]
 
     def testCaster(self):
-        if self.mapRayCaster.initializedp():
+        if self.mapModel.initializedp():
             # create a vector from the perspective of the robot
             robotOrigin = self.robotToMapFrame([1.0, 0.0, 0.0])
             rospy.loginfo("0,0 in map frame: [%0.2f, %0.2f]", robotOrigin[0], robotOrigin[1])
