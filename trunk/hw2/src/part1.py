@@ -104,4 +104,5 @@ if __name__ == '__main__':
         # try to remove our arrows so we don't have to restart roscore
         # doesn't work :( I'll just put a long timer on the arrows
         # actually, the IDs are the same, so you can just restart the program
-        app._visualizer.deleteArrows()
+        # app._visualizer.deleteArrows()
+        pass
