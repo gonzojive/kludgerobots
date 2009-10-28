@@ -5,7 +5,6 @@ import util
 import statutil
 import motionModel
 import math
-import mapManager
 import mapmodel
 import geometry_msgs
 import geometry_msgs.msg
@@ -27,9 +26,8 @@ class ParticleFilter(threading.Thread):
         self.poseSet = pose.PoseSet(viz, 50)    # 50 poses just for testing purposes
         #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
         self.poseSet.initializeGaussian( [initialPose[0], .5], [initialPose[1], 0.5], [initialPose[2], math.pi/2.0] )
-        self.mapManager = mapManager.MapManager(initialPose)
         self.startTime = rospy.Time.now()
-        self.mapModel = mapmodel.MapModel()
+        self.mapModel = mapmodel.MapModel(initialPose)
 
     # displayPoses(): draws the current poseSet to rviz
     # may exhibit odd behavior while the filter is updating poses; see pose.py
@@ -61,7 +59,7 @@ class ParticleFilter(threading.Thread):
     # parameters:
     #   odom -- the new odometry reading, currently in [[x, y], angle] format
     def receiveOdom(self, odom):
-        self.testCaster()
+        #self.testCaster()
         self.runFilterLock.acquire()    # <---grab the lock--->
         self.newOdom = odom[0] + [odom[1]]  # convert from [[x, y], a] to [x, y, a]
         if self.runFilter == 0:
@@ -95,7 +93,7 @@ class ParticleFilter(threading.Thread):
 
     def updateMapTf(self):
         self.updatePoseAverage()
-        #self.mapManager.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
+        #self.mapModel.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
 
     def updatePoseAverage(self):
         self.poseAverage = pose.Pose(0,0,0)
@@ -145,5 +143,5 @@ class ParticleFilter(threading.Thread):
             p.y += dx*sinTheta + dy*cosTheta    # rotate dy into pose frame and add
             p.theta = util.normalizeAngle360(p.theta + dtheta)   # theta adds linearly
             #rospy.loginfo("Pose1: %s", p.toStr())
-        if self.mapManager:    # if we have a valid map, cull the poses that are in illegal positions
-            self.poseSet.poses = filter(lambda p: self.mapManager.inBounds(p), self.poseSet.poses)
+        if self.mapModel:    # if we have a valid map, cull the poses that are in illegal positions
+            self.poseSet.poses = filter(lambda p: self.mapModel.inBounds(p), self.poseSet.poses)
