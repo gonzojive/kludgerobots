@@ -1,4 +1,5 @@
 import math
+from math import *
 NUMERIC_TOL = .000001
 
 # Given an angle and a radius, returns the X,Y coordinates of that point in cartesian coordinates

@@ -10,6 +10,8 @@ import geometry_msgs
 import geometry_msgs.msg
 import laser
 
+from vector import *
+
 # Minimum values before we run the filter again
 minimumMovement = .03    # 30 mm - probably want to increase this when we have more samples
 minimumTurn = util.d2r(10)  # 10 degrees
@@ -153,10 +155,40 @@ class ParticleFilter(threading.Thread):
             #rospy.loginfo("Pose1: %s", p.toStr())
             self.cullIllegalPoses()
 
+    
     def updateStep(self, laserScan):
+        # pseudocode:
+        # for all poses in particle filter:
+        #    transform the laser scans into that pose frame
+        #    calculate P(sensor reading | pose)
+        #       - sensor reading may consist of many laser beam readings which are multiplied together
+        #    P( sensor reading | pose) becomes the new weight for the particle
+        #    maybe normalize the weights
+        for pose in self.poseSet.poses:
+            pSensorReadingGivenPose = self.calculateSensorReadingGivenPose(laserScan, pose)
+            pose.weight = pSensorReadingGivenPose
         pass
 
+    def calculateSensorReadingGivenPose(self, laserScan, pose):
+        # pseudocode:
+        # for each laser beam in the laser scan, calculate the probabability
+        laserBeamVectors = laser.laserScanToVectors(laserScan)
+        pLaserBeamsGivenPose = [self.pLaserBeamGivenPose(vLaserBeam, pose) for vLaserBeam in laserBeamVectors]
+        product = 1.0
+        for p in pLaserBeamsGivenPose:
+            product *= product
+        return product
 
+    def pLaserBeamGivenPose(self, vLaserBeam, pose):
+        vLaserBeamInMapFrame = pose.inMapFrame(vLaserBeam)
+        d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
+        stdDev = .34
+        pGauss = statutil.gaussianProbability(0, stdDev, d)
+        pUniform = 1.0/12.0
+        weightGauss = .1
+        weightUniform = .9
+        return weightGauss*pGauss + weightUniform*pUniform
+        
     def cullIllegalPoses(self):
         if self.mapModel:    # if we have a valid map, cull the poses that are in illegal positions
             self.poseSet.poses = filter(lambda p: self.mapModel.inBounds(p), self.poseSet.poses)

@@ -76,8 +76,19 @@ def laserRangeAngle(i, readingRanges):
         
 # Given a laser reading, returns a bunch of cartesian points.
 # to the left is positive y.  straight is positive x
+def laserReadingToCartesianPointsOld(reading, position):
+    pos = position.position()
+    local = map(lambda rng,i: polarToCartesian(rng, laserRangeAngle(i, reading.ranges)+pos[1]), reading.ranges, xrange(0, len(reading.ranges)))
+    return [[p[0]-pos[0][0],p[1]-pos[0][1]] for p in local]
+
 def laserReadingToCartesianPoints(reading, position):
     pos = position.position()
     local = map(lambda rng,i: polarToCartesian(rng, laserRangeAngle(i, reading.ranges)+pos[1]), reading.ranges, xrange(0, len(reading.ranges)))
     return [[p[0]-pos[0][0],p[1]-pos[0][1]] for p in local]
 
+def laserScanToVectors(laserScan):
+    # FIXME: discard readings > 12 meters
+    ranges = laserScan.ranges
+    return map(lambda rng,i: polarToCartesian(rng, laserRangeAngle(i, ranges)), ranges, xrange(0, len(ranges)))
+        
+    

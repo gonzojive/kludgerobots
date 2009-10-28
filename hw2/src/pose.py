@@ -1,9 +1,10 @@
 import math
 import statutil
 import motionModel
-import rospy
 import util
-
+import vector
+import roslib; roslib.load_manifest('hw2')
+import rospy
 
 # class Pose
 #   contains the robot pose info (x position, y position, theta) and a weight
@@ -13,6 +14,13 @@ class Pose:
         self.y = y
         self.theta = theta
         self.weight = weight
+
+    # the pose itself is in the map frame, we just need to undo the
+    # rotation and apply the translation
+    def inMapFrame(self, pt):
+        # first rotate the pt about the z axis by the given angle
+        ptRotated = vector.vector_rotate_2d(pt, -1.0 * self.theta)
+        return vector.vector_add(ptRotated, [ self.x, self.y])
 
     def toStr(self):
         return "(%0.2f, %0.2f) at %0.2f degrees - weight = %0.2f" % (self.x, self.y, util.r2d(self.theta), self.weight)
