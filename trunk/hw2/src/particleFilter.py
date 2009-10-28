@@ -7,7 +7,8 @@ import motionModel
 import math
 import mapManager
 import raycast
-
+import geometry_msgs
+import geometry_msgs.msg
 # Minimum values before we run the filter again
 minimumMovement = .03    # 30 mm - probably want to increase this when we have more samples
 minimumTurn = util.d2r(10)  # 10 degrees
@@ -36,19 +37,21 @@ class ParticleFilter(threading.Thread):
         self.poseSet.display()
         self.poseSet.displayOne(self.poseAverage, displayColor = [0, 0, 1])
 
+    # given a point in the robot frame, returns a point in the map frame
     def robotToMapFrame(self, pt):
         msg = geometry_msgs.msg.PointStamped()
         msg.header.frame_id = "base_laser"
         msg.point.x = pt[0]
         msg.point.y = pt[1]
         msg.point.z = pt[2]
-        msg_in_my_frame = self.transformer.transformPoint(msg, "map")
-        return [msg.point.x, msg.point.y, msg.point.z]
+        msg_in_my_frame = self.transformer.transformPoint("map", msg)
+        ptOut = msg_in_my_frame.point
+        return [ptOut.x, ptOut.y, ptOut.z]
 
     def testCaster(self):
         if self.mapRayCaster.initializedp():
             # create a vector from the perspective of the robot
-            robotOrigin = robotToMapFrame([1.0, 0.0, 0.0])
+            robotOrigin = self.robotToMapFrame([1.0, 0.0, 0.0])
             rospy.loginfo("0,0 in map frame: [%0.2f, %0.2f]", robotOrigin[0], robotOrigin[1])
             #rospy.loginfo("Casting ray forard:Motion: %s", predict.toStr())    
     # receiveOdom(): updates the particle filter with the newest odometry reading
