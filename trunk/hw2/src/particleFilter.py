@@ -9,6 +9,7 @@ import mapmodel
 import geometry_msgs
 import geometry_msgs.msg
 import laser
+import random
 
 from vector import *
 
@@ -97,6 +98,7 @@ class ParticleFilter(threading.Thread):
             self.runFilterLock.release()    #  <---release the odom lock--->
             self.predictionStep(motion)
             self.updateStep(laserScan)
+            self.resampleStep()
             self.updateMapTf()
             self.displayPoses() # poses have changed, so draw the new ones
 
@@ -167,7 +169,12 @@ class ParticleFilter(threading.Thread):
         for pose in self.poseSet.poses:
             pSensorReadingGivenPose = self.calculateSensorReadingGivenPose(laserScan, pose)
             pose.weight = pSensorReadingGivenPose
-        pass
+        self.normalizeWeights()
+
+    def resampleStep(self):
+        for p in self.poseSet.poses:
+            rospy.loginfo("Pose weight: %f", p.weight)
+        self.poseSet.poses = statutil.lowVarianceSample(self.poseSet.poses)
 
     def calculateSensorReadingGivenPose(self, laserScan, pose):
         # pseudocode:
@@ -176,7 +183,7 @@ class ParticleFilter(threading.Thread):
         pLaserBeamsGivenPose = [self.pLaserBeamGivenPose(vLaserBeam, pose) for vLaserBeam in laserBeamVectors]
         product = 1.0
         for p in pLaserBeamsGivenPose:
-            product *= product
+            product *= p
         return product
 
     def pLaserBeamGivenPose(self, vLaserBeam, pose):
@@ -192,3 +199,8 @@ class ParticleFilter(threading.Thread):
     def cullIllegalPoses(self):
         if self.mapModel:    # if we have a valid map, cull the poses that are in illegal positions
             self.poseSet.poses = filter(lambda p: self.mapModel.inBounds(p), self.poseSet.poses)
+
+    def normalizeWeights(self):
+        s = sum([p.weight for p in self.poseSet.poses])
+        for pose in self.poseSet.poses:
+            pose.weight = pose.weight / s
