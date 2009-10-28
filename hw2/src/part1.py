@@ -40,7 +40,7 @@ class Part1():
 
     def initFilter(self):
         # will eventually want to pass in an error model
-        self._pFilter = particleFilter.ParticleFilter(self.robotPosition().position(), self._visualizer, self._motionErr, self.odoListener())
+        self._pFilter = particleFilter.ParticleFilter(self.robotPosition().position(), self._visualizer, self._motionErr, self.odoListener(), [34, 46, 0])
         self._pFilter.updateMapTf()    # initialize the best guess and sent it to tf
         self._pFilter.displayPoses()
         self._pFilter.start()   # threading function, calls our overloaded run() function and begins execution
