@@ -22,6 +22,14 @@ class MapRayCaster:
     def __init__(self):
         self._initialized = False
 
+        
+        self.fHeight = 10.0
+        self.fWidth = 10.0
+        self.xMax = 0.0
+        self.xMin = 0.0
+        self.yMin = 0.0
+        self.yMin = 0.0
+
         def mapCallback(mapOccGrid):
             self.mapMetaData = mapOccGrid.info
             self.grid = mapOccGrid.data
@@ -35,14 +43,14 @@ class MapRayCaster:
 
         # FIXME: account for the orientation of the map
         resolution = meta.resolution
-        meta.fHeight = resolution * float(meta.height)
-        meta.fWidth = resolution * float(meta.height)
+        self.fHeight = resolution * float(meta.height)
+        self.fWidth = resolution * float(meta.height)
         
-        meta.xMin = meta.origin.position.x
-        meta.xMax = meta.xMin + meta.fWidth
+        self.xMin = meta.origin.position.x
+        self.xMax = self.xMin + self.fWidth
         
-        yMin = meta.origin.position.y
-        yMax= meta.yMin + meta.fHeight
+        self.yMin = meta.origin.position.y
+        self.yMax= self.yMin + self.fHeight
 
 
     def initializedp(self):
@@ -62,11 +70,11 @@ class MapRayCaster:
     def probeAtPoint(self, pt):
         # here we the
         meta = self.mapMetaData
-        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  meta.xMin, meta.xMax, meta.width)
-        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  meta.yMin, meta.yMax, meta.height)
+        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, meta.width)
+        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, meta.height)
         # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
-        probabilityOfOccupancy = self.grid[yDiscrete * meta.width + xDiscrete]
+        probabilityOfOccupancy = self.grid[yDiscrete * self.width + xDiscrete]
         if probabilityOfOccupancy < 0:
            probabilityOfOccupancy = 100
 
