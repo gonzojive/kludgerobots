@@ -8,17 +8,20 @@ import math
 import mapmodel
 import geometry_msgs
 import geometry_msgs.msg
+import laser
+
 # Minimum values before we run the filter again
 minimumMovement = .03    # 30 mm - probably want to increase this when we have more samples
 minimumTurn = util.d2r(10)  # 10 degrees
 
 
 class ParticleFilter(threading.Thread):
-    def __init__(self, odom, viz, motionErr, transformer, initialPose):
+    def __init__(self, odom, viz, laser, motionErr, transformer, initialPose):
         threading.Thread.__init__(self) # initialize the threading package
         self.transformer = transformer
         self.lastOdom = odom[0] + [odom[1]] # convert from [[x, y], a] to [x, y, a]
         self.newOdom = self.lastOdom[:] # makes a deep copy
+        self.laser = laser
         self.motionError = motionErr or motionModel.MotionErrorModel()   # with no arguments, we should get 0 variance
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
@@ -81,13 +84,17 @@ class ParticleFilter(threading.Thread):
                 pass    # pass execution to another thread
                 continue    # when this resumes, start at the top of the thread again
             # if we get here, we're going to run the filter
-            self.runFilterLock.acquire()    # <---grab the lock--->
+            self.runFilterLock.acquire()    # <---grab the odom lock--->
+            self.laser.readingLock.acquire()    # <--- grab the laser lock --->
+            self.startTime = rospy.Time.now()
             motion = motionModel.odomToMotionModel(self.lastOdom, self.newOdom) # get the motion model
+            laserScan = self.laser.latestReading    # get the laser readings
             self.lastOdom = self.newOdom[:]  # save this new odometry
             self.runFilter = 0  # reset the filter flag
-            self.runFilterLock.release()    #  <---release the lock--->
-            self.startTime = rospy.Time.now()
+            self.laser.readingLock.release()    # <--- release the laser lock --->
+            self.runFilterLock.release()    #  <---release the odom lock--->
             self.predictionStep(motion)
+            self.updateStep(laserScan)
             self.updateMapTf()
             self.displayPoses() # poses have changed, so draw the new ones
 
@@ -120,8 +127,9 @@ class ParticleFilter(threading.Thread):
 
     # predictionStep(): update each pose given old and new odometry readings
     # this function currently does no locking, so it assumes that no other thread is modifying poseSet.
-    # I think this is a valid assumption in our program, but an alternative is to create a lock object in
-    # the Pose class, so each pose can be locked individually. Are locks expensive? I don't think they are.
+    # I think this is a valid assumption in our program, but an alternative is to create a lock object
+    # in the Pose class, so each pose can be locked individually. Are locks expensive? I don't think
+    # they are.
     # parameters:
     #   odomInitial --  an [x, y, angle] list of the previous odometry reading
     #   odomFinal   --  an [x, y, angle] list of the most recent odometry reading
@@ -144,6 +152,9 @@ class ParticleFilter(threading.Thread):
             p.theta = util.normalizeAngle360(p.theta + dtheta)   # theta adds linearly
             #rospy.loginfo("Pose1: %s", p.toStr())
             self.cullIllegalPoses()
+
+    def updateStep(self, laserScan):
+        pass
 
 
     def cullIllegalPoses(self):
