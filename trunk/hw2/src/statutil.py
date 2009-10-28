@@ -1,6 +1,15 @@
 import math
 import random
 
+# returns the probability of the value given the mean and standard
+# deviation of a gaussian distribution
+def gaussianProbability(mean, standardDeviation, value):
+    variance = standardDeviation * standardDeviation
+    coef = 1.0 / math.sqrt(2.0 * math.pi * variance)
+    diffFromMean = float(value) - float(mean)
+    innerExp = (-1.0 * diffFromMean * diffFromMean) / (2.0 * variance)
+    return coef * math.exp(innerExp)
+
 # returns a random number distributed according to the normal distribution with
 # the provided mean and sigma
 def randomGaussian(mean, standardDeviation):
