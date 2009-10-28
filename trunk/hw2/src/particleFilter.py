@@ -15,7 +15,7 @@ minimumTurn = util.d2r(10)  # 10 degrees
 
 
 class ParticleFilter(threading.Thread):
-    def __init__(self, odom, viz, motionErr, transformer):
+    def __init__(self, odom, viz, motionErr, transformer, initialPose):
         threading.Thread.__init__(self) # initialize the threading package
         self.transformer = transformer
         self.lastOdom = odom[0] + [odom[1]] # convert from [[x, y], a] to [x, y, a]
@@ -26,8 +26,8 @@ class ParticleFilter(threading.Thread):
         self.poseAverage = pose.Pose(0, 0, 0)
         self.poseSet = pose.PoseSet(viz, 50)    # 50 poses just for testing purposes
         #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
-        self.poseSet.initializeGaussian( [1, .5], [1, 0.5], [0.0, math.pi/2.0] )
-        self.mapManager = mapManager.MapManager()
+        self.poseSet.initializeGaussian( [initialPose[0], .5], [initialPose[1], 0.5], [initialPose[2], math.pi/2.0] )
+        self.mapManager = mapManager.MapManager(initialPose)
         self.startTime = rospy.Time.now()
         self.mapModel = mapmodel.MapModel()
 
@@ -53,7 +53,9 @@ class ParticleFilter(threading.Thread):
             # create a vector from the perspective of the robot
             robotOrigin = self.robotToMapFrame([1.0, 0.0, 0.0])
             rospy.loginfo("0,0 in map frame: [%0.2f, %0.2f]", robotOrigin[0], robotOrigin[1])
-            #rospy.loginfo("Casting ray forard:Motion: %s", predict.toStr())    
+            #rospy.loginfo("Casting ray forard:Motion: %s", predict.toStr())  
+
+  
     # receiveOdom(): updates the particle filter with the newest odometry reading
     # if the new reading is different enough, run the filter
     # parameters:
@@ -93,15 +95,18 @@ class ParticleFilter(threading.Thread):
 
     def updateMapTf(self):
         self.updatePoseAverage()
-        self.mapManager.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
+        #self.mapManager.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
 
     def updatePoseAverage(self):
         self.poseAverage = pose.Pose(0,0,0)
+        thetaX = 0
+        thetaY = 0
         totalWeight = 0
         for p in self.poseSet.poses:
             self.poseAverage.x += p.x*p.weight
             self.poseAverage.y += p.y*p.weight
-            self.poseAverage.theta += p.theta*p.weight
+            thetaX += math.cos(p.theta)
+            thetaY += math.sin(p.theta)
             totalWeight += p.weight
         if totalWeight < util.NUMERIC_TOL:
             self.poseAverage.x = 0
@@ -112,7 +117,7 @@ class ParticleFilter(threading.Thread):
             denom = 1.0/totalWeight
             self.poseAverage.x *= denom
             self.poseAverage.y *= denom
-            self.poseAverage.theta = util.normalizeAngle360(self.poseAverage.theta*denom)
+            self.poseAverage.theta = math.atan2(thetaY*denom, thetaX*denom)
             self.poseAverage.weight = 1
 
     # predictionStep(): update each pose given old and new odometry readings

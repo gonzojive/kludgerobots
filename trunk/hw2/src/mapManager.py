@@ -2,6 +2,7 @@ import rospy
 import tf
 import pose
 import threading
+import util
 
 from nav_msgs.msg import OccupancyGrid
 
@@ -31,14 +32,16 @@ class ROSMap:
 #   Calculates map->odom transformation and broadcasts to tf
 #   Also receives map info from map_server node and does processing on that
 class MapManager():
-    def __init__(self):
+    def __init__(self, initialPose):
         self.mapData = None
         self.tfBroadcaster = tf.TransformBroadcaster()
-        self.currentTf = [[0, 0, 0], [0, 0, 0, 1], rospy.Time.now()]
+        self.currentTf = [[initialPose[0], initialPose[1], 0], tf.transformations.quaternion_about_axis(initialPose[2], [0, 0, 1]), rospy.Time.now()]
+        rospy.loginfo("Initial tf: (%0.2f, %0.2f), angle = %0.2f", initialPose[0], initialPose[1], util.r2d(initialPose[2]))
         self.tempTf = self.currentTf[:]
         self.tfLock = threading.Lock()  # needed in case the main thread and the filter access it at the same time
         self.rosMap = ROSMap()
         rospy.Subscriber("map", OccupancyGrid, self.rosMap.mapCallback)
+        self.broadcast()
 
     # updateMapToOdomTf(): calculate the new map->odom transformation
     # parameters:
@@ -49,7 +52,7 @@ class MapManager():
         self.tempTf[0][0] = pose.x - odom[0]
         self.tempTf[0][1] = pose.y - odom[1]
         self.tempTf[2] = time or rospy.Time.now()
-        self.tempTf[1] = tf.transformations.quaternion_from_euler(0, 0, pose.theta-odom[2])
+        self.tempTf[1] = tf.transformations.quaternion_about_axis(pose.theta-odom[2], [0, 0, 1])
         self.tfLock.acquire()   # <--- grab the lock --->
         self.currentTf = self.tempTf[:]  # deep copy
         self.tfLock.release()   # <--- release the lock --->
