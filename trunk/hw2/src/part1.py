@@ -25,8 +25,8 @@ class Part1():
         self._move = move.MoveFromKeyboard(self._visualizer)
         self._pFilter = None
         # I have no idea what good error values are
-        self._motionErr = motionModel.MotionErrorModel(.05, 0.005, .1, .05, 0.005, .05)
-        #self._motionErr = None  # test only, assumes no error
+        #self._motionErr = motionModel.MotionErrorModel(.05, 0.005, .1, .05, 0.005, .05)
+        self._motionErr = None  # test only, assumes no error
 
     def robotPosition(self):
         return self._position
