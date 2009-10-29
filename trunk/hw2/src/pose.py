@@ -22,7 +22,7 @@ class Pose:
     # rotation and apply the translation
     def inMapFrame(self, pt):
         # first rotate the pt about the z axis by the given angle
-        ptRotated = vector.vector_rotate_2d(pt, -1.0 * self.theta)
+        ptRotated = vector.vector_rotate_2d(pt, 1.0 * self.theta)
         return vector.vector_add(ptRotated, [ self.x, self.y])
 
     def toStr(self):
@@ -58,6 +58,7 @@ class PoseSet:
             self.lastArrowId = idNumber-1
         elif type == "poses":   # doesn't work yet, for some reason puts poses in the wrong frame
             self.viz.vizPoseArray(self.poses)
+            self.lastArrowId = 0
 
     def displayOne(self, p, displayColor = None):
         idNumber = self.lastArrowId+1
