@@ -1,4 +1,5 @@
 import math
+import util
 
 
 # MotionErrorModel
@@ -47,7 +48,9 @@ def motionModelToOdom(model):
 #   odomFinal   --  [x, y, angle] list of the final odometry
 def odomToMotionModel(odomInitial, odomFinal):
     # calculate (final - initial)
-    [dx, dy, da] = [odomFinal[0]-odomInitial[0], odomFinal[1]-odomInitial[1], odomFinal[2]-odomInitial[2]]
+    [dx, dy, da] = [odomFinal[0]-odomInitial[0],
+                    odomFinal[1]-odomInitial[1],
+                    util.normalizeAnglePosNeg180(odomFinal[2]-odomInitial[2])]
     theta1 = math.atan2(dy, dx) - odomInitial[2]  # initial turn
     delta = math.sqrt(dx*dx + dy*dy)    # distance traveled
     theta2 = da - theta1   # final turn

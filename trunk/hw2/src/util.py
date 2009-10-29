@@ -33,13 +33,21 @@ def normalizeAngle360(rads):
     else:
         return rads
 
-# ensures a positive angle between 0 and 2math.pi 
+# ensures a positive angle between 0 and math.pi 
 def normalizeAngle180(rads):
     rads = normalizeAngle360(rads)    
     if (rads > math.pi):
         return 2 * math.pi - rads
     else:
         return rads
+
+# ensures a positive angle between 0 and math.pi 
+def normalizeAnglePosNeg180(rads):
+  rads360 = normalizeAngle360(rads)
+  if (rads > math.pi):
+    return -1.0 * normalizeAngle180(rads)
+  else:
+    return rads
 
 def normalizeAngle90(rads):
     rads = normalizeAngle360(rads)
