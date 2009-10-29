@@ -19,9 +19,17 @@ minimumTurn = util.d2r(10)  # 10 degrees
 
 
 class ParticleFilter(threading.Thread):
+    # constructor takes:
+    # odom - the position of the robot in the odometry frame according to the odometry
+    # viz - a vizualizer instance for dipslaying stuff in rviz
+    # laser - an instances of Laser from laser.py
+    # motionErr - and instance of MotionErrorModel
+    # transformer - the odometry object that we use to transform between frames
+    # initialPose - the initial guess of the robot in the Map frame (an instance of Pose)
     def __init__(self, odom, viz, laser, motionErr, transformer, initialPose):
         threading.Thread.__init__(self) # initialize the threading package
         self.transformer = transformer
+        # lastOdom stores
         self.lastOdom = odom[0] + [odom[1]] # convert from [[x, y], a] to [x, y, a]
         self.newOdom = self.lastOdom[:] # makes a deep copy
         self.laser = laser
@@ -29,11 +37,13 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0, 0, 0)
-        self.poseSet = pose.PoseSet(viz, 50)    # 50 poses just for testing purposes
+        self.numDesiredPoses = 50 # used during resampling
+        self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
-        self.poseSet.initializeGaussian( [initialPose[0], .5], [initialPose[1], 0.5], [initialPose[2], math.pi/2.0] )
+        self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/4.0] )
         self.startTime = rospy.Time.now()
         self.mapModel = mapmodel.MapModel(initialPose)
+
 
     # displayPoses(): draws the current poseSet to rviz
     # may exhibit odd behavior while the filter is updating poses; see pose.py
@@ -90,22 +100,30 @@ class ParticleFilter(threading.Thread):
             self.runFilterLock.acquire()    # <---grab the odom lock--->
             self.laser.readingLock.acquire()    # <--- grab the laser lock --->
             self.startTime = rospy.Time.now()
+
+            # collect data
             motion = motionModel.odomToMotionModel(self.lastOdom, self.newOdom) # get the motion model
             laserScan = self.laser.latestReading    # get the laser readings
+
             self.lastOdom = self.newOdom[:]  # save this new odometry
             self.runFilter = 0  # reset the filter flag
             self.laser.readingLock.release()    # <--- release the laser lock --->
             self.runFilterLock.release()    #  <---release the odom lock--->
+
+            # 1.  Prediction step.  Use the assumed motion of the robot to update
+            # the particle cloud.
             self.predictionStep(motion)
+            # 2. Localize ourselves (update step) given some sensor readings
             #self.updateStep(laserScan)
             self.resampleStep()
+            # tell the world where this particle filter thinks we are
             self.updateMapTf()
             rospy.loginfo("Updated the poses, displaying them now")
             self.displayPoses() # poses have changed, so draw the new ones
 
     def updateMapTf(self):
         self.updatePoseAverage()
-        #self.mapModel.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
+        self.mapModel.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
 
     def updatePoseAverage(self):
         self.poseAverage = pose.Pose(0,0,0)
@@ -175,9 +193,8 @@ class ParticleFilter(threading.Thread):
     def resampleStep(self):
         for p in self.poseSet.poses:
             rospy.loginfo("Pose weight: %f", p.weight)
-        numPoses = len(self.poseSet.poses)
-        self.poseSet.poses = statutil.lowVarianceSample(self.poseSet.poses, numPoses)
-        if numPoses != len(self.poseSet.poses):
+        self.poseSet.poses = statutil.lowVarianceSample(self.poseSet.poses, self.numDesiredPoses)
+        if len(self.poseSet.poses) != self.numDesiredPoses:
             raise Exception("Not cool--sampling did not return requested number of objects.  Got back %i" % len(self.poseSet.poses))
 
     def calculateSensorReadingGivenPose(self, laserScan, pose):

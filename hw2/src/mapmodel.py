@@ -6,6 +6,7 @@ import nav_msgs
 import nav_msgs.msg
 import geometry_msgs
 import marshal
+import pose
 
 def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
     # f prefix float i discrete
@@ -30,9 +31,9 @@ class MapModel:
         self.yMin = 0.0
 
         self.tfBroadcaster = tf.TransformBroadcaster()
-        self.currentTf = [[initialPose[0], initialPose[1], 0], tf.transformations.quaternion_about_axis(initialPose[2], [0, 0, 1]), rospy.Time.now()]
+        self.currentPoseInMapFrame = Pose(initialPose.x, initialPose.y, initialPose.theta)
+        #self.currentTf = [[initialPose.x, initialPose.y, 0], tf.transformations.quaternion_about_axis(initialPose.theta, [0, 0, 1]), rospy.Time.now()]
         #rospy.loginfo("Initial tf: (%0.2f, %0.2f), angle = %0.2f", initialPose[0], initialPose[1], util.r2d(initialPose[2]))
-        self.tempTf = self.currentTf[:]
         self.tfLock = threading.Lock()  # needed in case the main thread and the filter access it at the same time
 
         def mapCallback(mapOccGrid):
@@ -52,11 +53,11 @@ class MapModel:
     #   pose -- the current best guess pose (assumed to be in map coordinates)
     #   odom -- the current odometry values
     #   time -- the time at which these values were calculated
-    def updateMapToOdomTf(self, pose, odom, time = None):
-        self.tempTf[0][0] = pose.x - odom[0]
-        self.tempTf[0][1] = pose.y - odom[1]
+    def updateMapToOdomTf(self, guessedPoseInMapFrame, odomPoseInOdomFrame, time = None):
+        self.tempTf[0][0] = guessedPoseInMapFrame.x - odomPoseInOdomFrame[0]
+        self.tempTf[0][1] = guessedPoseInMapFrame.y - odom[1]
         self.tempTf[2] = time or rospy.Time.now()
-        self.tempTf[1] = tf.transformations.quaternion_about_axis(pose.theta-odom[2], [0, 0, 1])
+        self.tempTf[1] = tf.transformations.quaternion_about_axis(guessedPoseInMapFrame.theta - odomPoseInOdomFrame[2], [0, 0, 1])
         self.tfLock.acquire()   # <--- grab the lock --->
         self.currentTf = self.tempTf[:]  # deep copy
         self.tfLock.release()   # <--- release the lock --->
@@ -64,7 +65,12 @@ class MapModel:
     # broadcast(): send out the newest transform to tf
     def broadcast(self):
         self.tfLock.acquire()   # <--- grab the lock --->
-        self.tfBroadcaster.sendTransform(self.currentTf[0], self.currentTf[1], self.currentTf[2], "odom", "map")
+        # FIXME FIXME FIXME URGENT THIS IS WRONGGGGGGGGGGGGG
+        self.tfBroadcaster.sendTransform(self.currentPoseInMapFrame.x,
+                                         self.currentPoseInMapFrame.y,
+                                         tf.transformations.quaternion_about_axis(initialPose.theta, [0.0, 0.0, 1.0]),
+                                         # publish the transform from the odom frame to the map frame.
+                                         "odom", "map")
         self.tfLock.release()   # <--- release the lock --->
         #rospy.loginfo("Sent broadcast")
 

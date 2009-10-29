@@ -48,9 +48,10 @@ class PoseSet:
             for p in self.poses:
                 self.viz.vizArrow([p.x, p.y], p.theta, size = [0.2, 0.5, 0.5], idNum = idNumber, color = displayColor)
                 idNumber += 1
-            for i in range(idNumber, self.lastArrowId+1):
-                #rospy.loginfo("Deleting arrow %d", i)
-                self.viz.deleteArrow(i)
+            # don't worry about deleting them--rviz uses ids to deal with this sort of thing for us
+            #for i in range(idNumber, self.lastArrowId+1):
+            #    #rospy.loginfo("Deleting arrow %d", i)
+            #    self.viz.deleteArrow(i)
             self.lastArrowId = idNumber-1
         elif type == "poses":   # doesn't work yet, for some reason puts poses in the wrong frame
             self.viz.vizPoseArray(self.poses)
