@@ -42,6 +42,14 @@ class PoseSet:
         self.viz = viz
         self.lastArrowId = 0    # to delete old arrows
 
+    def avgWeight(self):
+        length = len(self.poses)
+        if length > 0.0:
+            total = sum([float(o.weight) for o in self.poses])
+            return total / float(length)
+        else:
+            return 0.0;
+
     # drawArrows(): send each pose out to rviz as an arrow
     # this never changes the poses, and it's too large to lock for the whole function, so it may show
     # inconsistencies if the filter is updating while this is drawing to rviz
