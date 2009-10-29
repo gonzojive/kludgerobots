@@ -1,12 +1,14 @@
 import rospy
 import tf
 import threading
+import vector
 from vector import *
 import nav_msgs
 import nav_msgs.msg
 import geometry_msgs
 import marshal
 import pose
+import quaternion
 
 def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
     # f prefix float i discrete
@@ -30,8 +32,12 @@ class MapModel:
         self.yMin = 0.0
         self.yMin = 0.0
 
+        # last time the robot position within the map was updated
+        self.translationMapToOdom = None
+        self.rotationMapToOdom = None
+        self.lastUpdateTime = rospy.Time.now()
         self.tfBroadcaster = tf.TransformBroadcaster()
-        self.currentPoseInMapFrame = Pose(initialPose.x, initialPose.y, initialPose.theta)
+        self.currentPoseInMapFrame = pose.Pose(initialPose.x, initialPose.y, initialPose.theta)
         #self.currentTf = [[initialPose.x, initialPose.y, 0], tf.transformations.quaternion_about_axis(initialPose.theta, [0, 0, 1]), rospy.Time.now()]
         #rospy.loginfo("Initial tf: (%0.2f, %0.2f), angle = %0.2f", initialPose[0], initialPose[1], util.r2d(initialPose[2]))
         self.tfLock = threading.Lock()  # needed in case the main thread and the filter access it at the same time
@@ -54,23 +60,39 @@ class MapModel:
     #   odom -- the current odometry values
     #   time -- the time at which these values were calculated
     def updateMapToOdomTf(self, guessedPoseInMapFrame, odomPoseInOdomFrame, time = None):
-        self.tempTf[0][0] = guessedPoseInMapFrame.x - odomPoseInOdomFrame[0]
-        self.tempTf[0][1] = guessedPoseInMapFrame.y - odom[1]
-        self.tempTf[2] = time or rospy.Time.now()
-        self.tempTf[1] = tf.transformations.quaternion_about_axis(guessedPoseInMapFrame.theta - odomPoseInOdomFrame[2], [0, 0, 1])
+        # translate from the
         self.tfLock.acquire()   # <--- grab the lock --->
-        self.currentTf = self.tempTf[:]  # deep copy
+        #1. Rotate the odom frame
+        guessedTheta = guessedPoseInMapFrame.theta
+        odomTheta = odomPoseInOdomFrame[2]
+        quat = tf.transformations.quaternion_about_axis( odomTheta  - guessedTheta, [0, 0, 1])
+
+        #2. figure out the translation from the map to the odom frame
+        # apply the rotation to the point in the map frame
+        mapCoordRotated = quaternion.rotateVectorWithQuaternion([guessedPoseInMapFrame.x , guessedPoseInMapFrame.y, 0.0],
+                                                               quat)
+        # odom - mapcoordRotated
+        translation = vector.vector_minus([ odomPoseInOdomFrame[0], odomPoseInOdomFrame[1], 0.0],
+                                          mapCoordRotated)
+
+        self.translationMapToOdom = translation
+        self.rotationMapToOdom = quat
+        self.lastUpdateTime = time or rospy.Time.now()
         self.tfLock.release()   # <--- release the lock --->
 
     # broadcast(): send out the newest transform to tf
     def broadcast(self):
         self.tfLock.acquire()   # <--- grab the lock --->
-        # FIXME FIXME FIXME URGENT THIS IS WRONGGGGGGGGGGGGG
-        self.tfBroadcaster.sendTransform(self.currentPoseInMapFrame.x,
-                                         self.currentPoseInMapFrame.y,
-                                         tf.transformations.quaternion_about_axis(initialPose.theta, [0.0, 0.0, 1.0]),
-                                         # publish the transform from the odom frame to the map frame.
-                                         "odom", "map")
+        if self.translationMapToOdom:
+            # FIXME FIXME FIXME URGENT THIS IS WRONGGGGGGGGGGGGG
+            # sendTransform(translation, rotation, time, child, parent)
+            # where does the ODOM think we are?
+            # where do we actually think we are?
+            # publish the transform from the odom frame to the map frame.
+            self.tfBroadcaster.sendTransform(self.translationMapToOdom,
+                                             self.rotationMapToOdom,
+                                             self.lastUpdateTime,
+                                             "odom", "map")
         self.tfLock.release()   # <--- release the lock --->
         #rospy.loginfo("Sent broadcast")
 

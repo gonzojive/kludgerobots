@@ -36,7 +36,7 @@ class ParticleFilter(threading.Thread):
         self.motionError = motionErr or motionModel.MotionErrorModel()   # with no arguments, we should get 0 variance
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
-        self.poseAverage = pose.Pose(0, 0, 0)
+        self.poseAverage = pose.Pose(0.0, 0.0, 0.0)
         self.numDesiredPoses = 50 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
@@ -137,16 +137,16 @@ class ParticleFilter(threading.Thread):
             thetaY += math.sin(p.theta)
             totalWeight += p.weight
         if totalWeight < util.NUMERIC_TOL:
-            self.poseAverage.x = 0
-            self.poseAverage.y = 0
-            self.poseAverage.theta = 0
-            self.poseAverage.weight = 0
+            self.poseAverage.x = 0.0
+            self.poseAverage.y = 0.0
+            self.poseAverage.theta = 0.0
+            self.poseAverage.weight = 0.0
         else:
             denom = 1.0/totalWeight
             self.poseAverage.x *= denom
             self.poseAverage.y *= denom
             self.poseAverage.theta = math.atan2(thetaY*denom, thetaX*denom)
-            self.poseAverage.weight = 1
+            self.poseAverage.weight = 1.0
 
     # predictionStep(): update each pose given old and new odometry readings
     # this function currently does no locking, so it assumes that no other thread is modifying poseSet.
