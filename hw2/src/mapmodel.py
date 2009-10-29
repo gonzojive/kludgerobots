@@ -9,6 +9,7 @@ import geometry_msgs
 import marshal
 import pose
 import quaternion
+import util
 
 def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
     # f prefix float i discrete
@@ -65,15 +66,21 @@ class MapModel:
         #1. Rotate the odom frame
         guessedTheta = guessedPoseInMapFrame.theta
         odomTheta = odomPoseInOdomFrame[2]
-        quat = tf.transformations.quaternion_about_axis( odomTheta  - guessedTheta, [0, 0, 1])
+        rotationTheta = odomTheta - guessedTheta
+        quat = tf.transformations.quaternion_about_axis( rotationTheta, [0, 0, 1])
 
         #2. figure out the translation from the map to the odom frame
         # apply the rotation to the point in the map frame
         mapCoordRotated = quaternion.rotateVectorWithQuaternion([guessedPoseInMapFrame.x , guessedPoseInMapFrame.y, 0.0],
                                                                quat)
+
         # odom - mapcoordRotated
-        translation = vector.vector_minus([ odomPoseInOdomFrame[0], odomPoseInOdomFrame[1], 0.0],
-                                          mapCoordRotated)
+        translation = vector.vector_minus([guessedPoseInMapFrame.x , guessedPoseInMapFrame.y, 0.0], #mapCoordRotated,
+                                          [ odomPoseInOdomFrame[0], odomPoseInOdomFrame[1], 0.0],
+                                          )
+
+        rospy.loginfo("Determined map => odom transform.  Translation: (%0.2f, %0.2f), angle = %0.2f degrees",
+                      translation[0], translation[1], util.r2d(rotationTheta))
 
         self.translationMapToOdom = translation
         self.rotationMapToOdom = quat
@@ -84,6 +91,9 @@ class MapModel:
     def broadcast(self):
         self.tfLock.acquire()   # <--- grab the lock --->
         if self.translationMapToOdom:
+            rospy.loginfo("broadcasting map => odom transform.  translation: (%0.2f, %0.2f)",
+                          self.translationMapToOdom[0], self.translationMapToOdom[1])
+
             # FIXME FIXME FIXME URGENT THIS IS WRONGGGGGGGGGGGGG
             # sendTransform(translation, rotation, time, child, parent)
             # where does the ODOM think we are?
