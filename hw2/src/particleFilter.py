@@ -26,7 +26,7 @@ class ParticleFilter(threading.Thread):
     # motionErr - and instance of MotionErrorModel
     # transformer - the odometry object that we use to transform between frames
     # initialPose - the initial guess of the robot in the Map frame (an instance of Pose)
-    def __init__(self, odom, viz, laser, motionErr, transformer, initialPose):
+    def __init__(self, odom, viz, laser, motionErr, transformer, initialPose, full = True):
         threading.Thread.__init__(self) # initialize the threading package
         self.transformer = transformer
         # lastOdom stores
@@ -45,6 +45,7 @@ class ParticleFilter(threading.Thread):
         self.startTime = rospy.Time.now()
         self.mapModel = mapmodel.MapModel(initialPose)
         self.viz = viz
+        self.full = full    # whether to do the full filter or just the prediction step
 
 
     # displayPoses(): draws the current poseSet to rviz
@@ -106,28 +107,32 @@ class ParticleFilter(threading.Thread):
                 continue    # when this resumes, start at the top of the thread again
             # if we get here, we're going to run the filter
             self.runFilterLock.acquire()    # <---grab the odom lock--->
-            self.laser.readingLock.acquire()    # <--- grab the laser lock --->
+            if self.laser:
+                self.laser.readingLock.acquire()    # <--- grab the laser lock --->
             self.startTime = rospy.Time.now()
 
             # collect data
             motion = motionModel.odomToMotionModel(self.lastOdom, self.newOdom) # get the motion model
-            laserScan = self.laser.latestReading    # get the laser readings
+            if self.laser:
+                laserScan = self.laser.latestReading    # get the laser readings
 
             self.lastOdom = self.newOdom[:]  # save this new odometry
             self.runFilter = 0  # reset the filter flag
-            self.laser.readingLock.release()    # <--- release the laser lock --->
+            if self.laser:
+                self.laser.readingLock.release()    # <--- release the laser lock --->
             self.runFilterLock.release()    #  <---release the odom lock--->
 
             # 1.  Prediction step.  Use the assumed motion of the robot to update
             # the particle cloud.
             self.predictionStep(motion)
-            # 2. Localize ourselves (update step) given some sensor readings
-            self.updateStep(laserScan)
-            # tell the world where this particle filter thinks we are
-            #self.updateMapTf()
-            #rospy.loginfo("Updated the poses, displaying them now")
+            if self.full:
+                # 2. Localize ourselves (update step) given some sensor readings
+                self.updateStep(laserScan)
+
+            self.updatePoseAverage()
             self.displayPoses() # poses have changed, so draw the new ones
-            self.displayLasers(laserScan)
+            if self.laser:
+                self.displayLasers(laserScan)
 
     def updateMapTf(self):
         "does nothing"
@@ -196,17 +201,13 @@ class ParticleFilter(threading.Thread):
         #    maybe normalize the weights
         poseNum = 0
         for pose in self.poseSet.poses:
-            vizid = poseNum + 10000 if (poseNum % 50) == 0 else False
+            #vizid = poseNum + 10000 if (poseNum % 50) == 0 else False
             vizid = None
             pSensorReadingGivenPose = self.pSensorReadingGivenPose(laserScan, pose, vizid)
             pose.weight = pSensorReadingGivenPose
             poseNum += 1
-
         self.normalizeWeights()
         self.resampleStep()
-        self.updatePoseAverage()
-        # debug.  display some visual output for this pose
-        self.pSensorReadingGivenPose(laserScan, self.poseAverage, 54 + 10000)
             
 
     def resampleStep(self):
@@ -241,7 +242,7 @@ class ParticleFilter(threading.Thread):
             sumLogProbabilities += math.log(p)
 
         result = math.exp(sumLogProbabilities)
-        rospy.loginfo("sumLogProbabilities = %f,  p = %f", sumLogProbabilities, result)
+        #rospy.loginfo("sumLogProbabilities = %f,  p = %f", sumLogProbabilities, result)
         #result = sumLogProbabilities
 
         return result
@@ -264,7 +265,7 @@ class ParticleFilter(threading.Thread):
         if self.mapModel:    # if we have a valid map, cull the poses that are in illegal positions
             self.poseSet.poses = filter(lambda p: self.mapModel.inBounds(p), self.poseSet.poses)
         dbgLateLen = len(self.poseSet.poses)
-        rospy.loginfo("culled %i poses from %i to %i", dbgOrigLen - dbgLateLen, dbgOrigLen, dbgLateLen)
+        #rospy.loginfo("culled %i poses from %i to %i", dbgOrigLen - dbgLateLen, dbgOrigLen, dbgLateLen)
         
 
     def normalizeWeights(self):
