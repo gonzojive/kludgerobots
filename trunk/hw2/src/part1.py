@@ -20,40 +20,29 @@ from sensor_msgs.msg import LaserScan
 class Part1():
     def __init__(self):
         self._position = RobotPosition()
-        self._laserInterpreter = LaserInterpreter()
         self._odoListener = None
         self._visualizer = viz.Visualizer()
         self._move = move.MoveFromKeyboard(self._visualizer)
         self._pFilter = None
         # I have no idea what good error values are
-        #self._motionErr = motionModel.MotionErrorModel(.1, .1, .1, .1, .1, .1)
-        self._motionErr = None  # test only, assumes no error
+        self._motionErr = motionModel.MotionErrorModel(.05, 0.005, .1, .05, 0.005, .05)
+        #self._motionErr = None  # test only, assumes no error
 
     def robotPosition(self):
         return self._position
-
-    def laserInterpreter(self):
-        return self._laserInterpreter
 
     def odoListener(self):
         return self._odoListener
 
     def initFilter(self):
         # will eventually want to pass in an error model
-        self._pFilter = particleFilter.ParticleFilter(self.robotPosition().position(), self._visualizer, self._motionErr, self.odoListener(), [34, 46, 0])
+        self._pFilter = particleFilter.ParticleFilter(self.robotPosition().position(), self._visualizer, None, self._motionErr, self.odoListener(), pose.Pose(34, 46, 0), False)
         self._pFilter.updateMapTf()    # initialize the best guess and sent it to tf
         self._pFilter.displayPoses()
         self._pFilter.start()   # threading function, calls our overloaded run() function and begins execution
         #self._pFilter.poseSet.printPoses()
 
     def initSubscriptions(self):
-        # subscribe to laser readings
-        def laserCallback(reading):
-            self.laserInterpreter().laserReadingNew(reading)
-
-        rospy.Subscriber("laser", LaserScan, laserCallback) # listen to "laser"
-        rospy.loginfo("Subscribed to laser readings")
-
         # subscribe to transformation updates
         self._odoListener = tf.TransformListener() # listen to tf
         rospy.loginfo("Subscribed to odometry frames")
