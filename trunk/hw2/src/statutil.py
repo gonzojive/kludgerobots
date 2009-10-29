@@ -11,6 +11,25 @@ def gaussianProbability(mean, standardDeviation, value):
     innerExp = (-1.0 * diffFromMean * diffFromMean) / (2.0 * variance)
     return coef * math.exp(innerExp)
 
+def mean(values):
+    if len(values) > 0:
+        num = float(len(values))
+        return sum(values) / num
+    else:
+        return 0
+
+# fundamental theory of probability:
+# variance([randomGaussian(0.0, 1.0) for n in xrange(0, 200)]) => 1.1129958700263398
+# variance([randomGaussian(0.0, 1.0) for n in xrange(0, 200000)]) => 0.99666458910502709
+def variance(values):
+    avg = mean(values)
+    sumOfSquareDistancesToMean = 0.0
+    for v in values:
+        delta = avg - v
+        deltaSqr = delta * delta
+        sumOfSquareDistancesToMean += deltaSqr
+    return sumOfSquareDistancesToMean / float(len(values))
+
 # returns a random number distributed according to the normal distribution with
 # the provided mean and sigma
 def randomGaussian(mean, standardDeviation):
