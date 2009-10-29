@@ -225,8 +225,8 @@ class ParticleFilter(threading.Thread):
         for p in pLaserBeamsGivenPose:
             sumLogProbabilities += math.log(p)
 
-        rospy.loginfo("sumLogProbabilities = %f ", sumLogProbabilities)
         result = math.exp(sumLogProbabilities)
+        rospy.loginfo("sumLogProbabilities = %f,  p = %f", sumLogProbabilities, result)
         #result = sumLogProbabilities
 
         return result
