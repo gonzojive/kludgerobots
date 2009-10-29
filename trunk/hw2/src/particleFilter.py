@@ -97,9 +97,10 @@ class ParticleFilter(threading.Thread):
             self.laser.readingLock.release()    # <--- release the laser lock --->
             self.runFilterLock.release()    #  <---release the odom lock--->
             self.predictionStep(motion)
-            self.updateStep(laserScan)
+            #self.updateStep(laserScan)
             self.resampleStep()
             self.updateMapTf()
+            rospy.loginfo("Updated the poses, displaying them now")
             self.displayPoses() # poses have changed, so draw the new ones
 
     def updateMapTf(self):
@@ -174,7 +175,10 @@ class ParticleFilter(threading.Thread):
     def resampleStep(self):
         for p in self.poseSet.poses:
             rospy.loginfo("Pose weight: %f", p.weight)
-        self.poseSet.poses = statutil.lowVarianceSample(self.poseSet.poses)
+        numPoses = len(self.poseSet.poses)
+        self.poseSet.poses = statutil.lowVarianceSample(self.poseSet.poses, numPoses)
+        if numPoses != len(self.poseSet.poses):
+            raise Exception("Not cool--sampling did not return requested number of objects.  Got back %i" % len(self.poseSet.poses))
 
     def calculateSensorReadingGivenPose(self, laserScan, pose):
         # pseudocode:
