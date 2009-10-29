@@ -155,15 +155,18 @@ class MapModel:
         # assume anything with a value >= 10 is occupied.  If the
         # value is -1 it means it is unknown and we assume that it is
         # an obstacle
+        probs = {}
         def obstaclepFromProbability(p):
-            if p >= 10 or p == -1:
+            probs[p] = True
+            if p > 0 and p != 255:
                 return True
             else:
                 return False
 
+
         boolgrid = map(obstaclepFromProbability, map(ord, self.grid))
 
-
+        rospy.loginfo("probs: %s", probs)
         # given discrete grid indexes returns these functions 
         def gridValueAtDiscreteCoordinate(grid, xDiscrete, yDiscrete):
             return grid[yDiscrete * self.meta.width + xDiscrete]
@@ -171,7 +174,7 @@ class MapModel:
         def setGridValueAtDiscreteCoordinate(grid, xDiscrete, yDiscrete, value):
             grid[yDiscrete * self.meta.width + xDiscrete] = value
 
-        numWildFireUpdates = min(self.meta.height, self.meta.width)
+        numWildFireUpdates = min(self.meta.height, self.meta.width, 25)
 
         def allDiscreteGridCoordinates():
             for xDiscrete in xrange(0, self.meta.width):
@@ -244,10 +247,12 @@ class MapModel:
             realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
             # get the nearest obstacle to that point
             nearestObstacle = gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete)
-            # find the distance between them
-            vToNearestObstacle = vector_minus(nearestObstacle, realPoint)
-            nearestObstacleDist = vector_length(vToNearestObstacle)
-            # set the distgrid value
+            nearestObstacleDist = 2.5 # default to 2.5 meters
+            if nearestObstacle:
+                # find the distance between them
+                vToNearestObstacle = vector_minus(nearestObstacle, realPoint)
+                nearestObstacleDist = vector_length(vToNearestObstacle)
+                # set the distgrid value
             setGridValueAtDiscreteCoordinate(distgrid, xDiscrete, yDiscrete, nearestObstacleDist)
         return distgrid
 
