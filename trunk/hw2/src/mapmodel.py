@@ -320,3 +320,116 @@ class MapModel:
             scale += sampleSize
 
         return vMagnitude
+    def computeDistanceFromObstacleGridWild(self):
+        # create a row-major grid that holds the nearest obstacle from
+        # each point in the original map grid
+
+        def discreteGridRefToReal(xDiscrete, yDiscrete):
+            res = self.meta.resolution
+            return [float(xDiscrete) * res + self.xMin, float(yDiscrete) * res + self.yMin]
+
+        # the grid has a value between 0 and 100 that indicates the
+        # probability that an element of the grid is occupied.  We
+        # assume anything with a value >= 10 is occupied.  If the
+        # value is -1 it means it is unknown and we assume that it is
+        # an obstacle
+        probs = {}
+        def obstaclepFromProbability(p):
+            probs[p] = True
+            if p > 0 and p != 255:
+                return True
+            else:
+                return False
+
+
+        boolgrid = map(obstaclepFromProbability, map(ord, self.grid))
+
+        rospy.loginfo("probs: %s", probs)
+        # given discrete grid indexes returns these functions 
+        def gridValueAtDiscreteCoordinate(grid, xDiscrete, yDiscrete):
+            return grid[yDiscrete * self.meta.width + xDiscrete]
+
+        def setGridValueAtDiscreteCoordinate(grid, xDiscrete, yDiscrete, value):
+            grid[yDiscrete * self.meta.width + xDiscrete] = value
+
+        numWildFireUpdates = min(self.meta.height, self.meta.width, 25)
+
+        def allDiscreteGridCoordinates():
+            for xDiscrete in xrange(0, self.meta.width):
+                for yDiscrete in xrange(0, self.meta.height):
+                    yield [xDiscrete, yDiscrete]
+
+        unburnedList = [x for x in allDiscreteGridCoordinates()]
+        # stores whether each element of the grid has been burned
+        nearestObstacleGrid = boolgrid[:]
+
+        # Initially set the nearest obstacle at each point to itself
+        # if there is an obstacle there, or none if there is not an
+        # obstacle there
+        for [xDiscrete, yDiscrete] in allDiscreteGridCoordinates():
+            nearestObstacle = None
+            if gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete):
+                nearestObstacle = discreteGridRefToReal(xDiscrete, yDiscrete)
+            setGridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete, nearestObstacle)
+
+
+        
+        # returns a list of obstacles that surround the given grid coordinate
+        def knownNearbyObstacles(xDiscrete, yDiscrete):
+            def pts ():
+                for i in xrange(max(0, xDiscrete-1), min(xDiscrete+2, self.meta.width)):
+                    for j in xrange(max(0, yDiscrete-1), min(yDiscrete+2, self.meta.height)):
+                        yield [i, j]
+
+            return [gridValueAtDiscreteCoordinate(nearestObstacleGrid, x, y) for [x, y] in pts()]
+        
+        for i in xrange(0, numWildFireUpdates):
+            numUpdatedGridCells = 0
+            for [xDiscrete, yDiscrete] in allDiscreteGridCoordinates():
+                # point in space does this grid coordinate corresponds to
+                realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
+                def distSquaredToObstacle(pt):
+                    vToPt = vector_minus(pt, realPoint)
+                    return vector_length_squared(vToPt)
+                        
+                # keep track of the closest obstacle
+                nearestObstacle = gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete)
+                nearestObstacleDistSquared = -1
+                if nearestObstacle:
+                    nearestObstacleDistSquared = distSquaredToObstacle(nearestObstacle)
+                    
+                # get a list of obstacles that are near neighboring cells
+                nearbyObstacles = [x for x in knownNearbyObstacles(xDiscrete, yDiscrete)]
+
+                for nearbyObstacle in nearbyObstacles:
+                    if nearbyObstacle:
+                        # if this nearby obstacle is closer than others, set it as the best
+                        nearbyObstacleDistSquared = distSquaredToObstacle(nearbyObstacle)
+                        if not nearestObstacle or nearbyObstacleDistSquared + .001 < nearestObstacleDistSquared:
+                            nearestObstacleDistSquared = nearbyObstacleDistSquared
+                            nearestObstacle = nearbyObstacle
+                            numUpdatedGridCells += 1
+                setGridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete, nearestObstacle)
+            rospy.loginfo("%ith wildfire updated %i grid cells", i, numUpdatedGridCells)
+            if numUpdatedGridCells == 0:
+                break
+
+        distgrid = nearestObstacleGrid[:]
+        # given the grid that maps points to nearest obstacles,
+        # compute the actual distance from each cell to its nearest
+        # obstacle and return a grid with the result
+        for [xDiscrete, yDiscrete] in allDiscreteGridCoordinates():
+            # get the point corresponding to this cell
+            realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
+            # get the nearest obstacle to that point
+            nearestObstacle = gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete)
+            nearestObstacleDist = 2.5 # default to 2.5 meters
+            if nearestObstacle:
+                # find the distance between them
+                vToNearestObstacle = vector_minus(nearestObstacle, realPoint)
+                nearestObstacleDist = vector_length(vToNearestObstacle)
+                # set the distgrid value
+            setGridValueAtDiscreteCoordinate(distgrid, xDiscrete, yDiscrete, nearestObstacleDist)
+        return distgrid
+
+
