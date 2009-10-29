@@ -37,10 +37,11 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0.0, 0.0, 0.0)
-        self.numDesiredPoses = 220 # used during resampling
+        self.numDesiredPoses = 200 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
-        #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
+        #self.poseSet.initializeUniformStochastic( [0, 50], [0, 50], [0, 2*math.pi] )
         self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )
+        self.updatePoseAverage()
         self.startTime = rospy.Time.now()
         self.mapModel = mapmodel.MapModel(initialPose)
         self.viz = viz
@@ -51,6 +52,12 @@ class ParticleFilter(threading.Thread):
     def displayPoses(self):
         self.poseSet.display()
         self.poseSet.displayOne(self.poseAverage, displayColor = [0, 0, 1])
+
+    def displayLasers(self, laserScan):
+        laserBeamVectors = laser.laserScanToVectors(laserScan, 1)
+        # visualization of points in map
+        debugPoints = [self.poseAverage.inMapFrame(vLaserBeam) for vLaserBeam in laserBeamVectors]
+        self.viz.vizPoints(debugPoints, 1000)
 
     # given a point in the robot frame, returns a point in the map frame
     def robotToMapFrame(self, pt):
@@ -117,8 +124,10 @@ class ParticleFilter(threading.Thread):
             # 2. Localize ourselves (update step) given some sensor readings
             self.updateStep(laserScan)
             # tell the world where this particle filter thinks we are
-            self.updateMapTf()
-            rospy.loginfo("Updated the poses, displaying them now")
+            #self.updateMapTf()
+            #rospy.loginfo("Updated the poses, displaying them now")
+            self.displayPoses() # poses have changed, so draw the new ones
+            self.displayLasers(laserScan)
 
     def updateMapTf(self):
         "does nothing"
@@ -196,7 +205,6 @@ class ParticleFilter(threading.Thread):
         self.normalizeWeights()
         self.resampleStep()
         self.updatePoseAverage()
-        self.displayPoses() # poses have changed, so draw the new ones
         # debug.  display some visual output for this pose
         self.pSensorReadingGivenPose(laserScan, self.poseAverage, 54 + 10000)
             
