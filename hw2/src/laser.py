@@ -68,6 +68,7 @@ class Laser:
 # assuming the laser is 180 degrees, returns what angle the ith laser reading is
 # given an array of laser ranges (which are arranged left to right)
 def laserRangeAngle(i, readingRanges):
+    i = len(readingRanges) - i - 1
     num_scan_points = len(readingRanges)
     if num_scan_points > 0:
         return (1.0 - float(i) / float(num_scan_points)) * pi

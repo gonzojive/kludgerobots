@@ -37,7 +37,7 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0.0, 0.0, 0.0)
-        self.numDesiredPoses = 200 # used during resampling
+        self.numDesiredPoses = 220 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
         self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )
@@ -116,14 +116,12 @@ class ParticleFilter(threading.Thread):
             self.predictionStep(motion)
             # 2. Localize ourselves (update step) given some sensor readings
             self.updateStep(laserScan)
-            self.resampleStep()
             # tell the world where this particle filter thinks we are
             self.updateMapTf()
             rospy.loginfo("Updated the poses, displaying them now")
-            self.displayPoses() # poses have changed, so draw the new ones
 
     def updateMapTf(self):
-        self.updatePoseAverage()
+        "does nothing"
         # rviz cannot handle this, or we can't
         #self.mapModel.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
 
@@ -190,12 +188,18 @@ class ParticleFilter(threading.Thread):
         poseNum = 0
         for pose in self.poseSet.poses:
             vizid = poseNum + 10000 if (poseNum % 50) == 0 else False
+            vizid = None
             pSensorReadingGivenPose = self.pSensorReadingGivenPose(laserScan, pose, vizid)
             pose.weight = pSensorReadingGivenPose
             poseNum += 1
 
-        self.displayPoses() # poses have changed, so draw the new ones
         self.normalizeWeights()
+        self.resampleStep()
+        self.updatePoseAverage()
+        self.displayPoses() # poses have changed, so draw the new ones
+        # debug.  display some visual output for this pose
+        self.pSensorReadingGivenPose(laserScan, self.poseAverage, 54 + 10000)
+            
 
     def resampleStep(self):
         for p in self.poseSet.poses:
@@ -208,6 +212,9 @@ class ParticleFilter(threading.Thread):
         if len(self.poseSet.poses) != self.numDesiredPoses:
             raise Exception("Not cool--sampling did not return requested number of objects.  Got back %i" % len(self.poseSet.poses))
 
+    def vizPoseAndSupposedLaserReadings(self, pose):
+        print "just viz the best one here"
+
     def pSensorReadingGivenPose(self, laserScan, pose, vizid=False):
         # pseudocode:
         # for each laser beam in the laser scan, calculate the probabability
@@ -216,7 +223,7 @@ class ParticleFilter(threading.Thread):
         # visualization of points in map
         if vizid:
             debugPoints = [pose.inMapFrame(vLaserBeam) for vLaserBeam in laserBeamVectors]
-            debugPoints = filter(lambda p : self.mapModel.pointInBounds(p), debugPoints)
+            #debugPoints = filter(lambda p : self.mapModel.pointInBounds(p), debugPoints)
             self.viz.vizPoints(debugPoints, vizid)
         
         pLaserBeamsGivenPose = [self.pLaserBeamGivenPose(vLaserBeam, pose) for vLaserBeam in laserBeamVectors]
@@ -238,7 +245,7 @@ class ParticleFilter(threading.Thread):
         pGauss = statutil.gaussianProbability(0, stdDev, d)
         pUniform = 1.0/12.0
         weightGauss = .2
-        weightUniform = .8
+        weightUniform = .9
 
         #rospy.loginfo("pGauss: %f", pGauss)
 
