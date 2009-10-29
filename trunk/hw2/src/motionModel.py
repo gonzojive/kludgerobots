@@ -15,11 +15,11 @@ class MotionErrorModel:
         self.sigDeltaOnTheta2 = a5
         self.sigTheta2 = a6
     def theta1Variance(self, motion):
-        return motion.theta1*self.sigTheta1 + motion.delta*self.sigDeltaOnTheta1
+        return abs(motion.theta1*self.sigTheta1) + abs(motion.delta*self.sigDeltaOnTheta1)
     def deltaVariance(self, motion):
-        return motion.delta*self.sigDelta
+        return abs(motion.delta*self.sigDelta)
     def theta2Variance(self, motion):
-        return motion.theta1*self.sigTheta1OnTheta2 + motion.delta*self.sigDeltaOnTheta2 + motion.theta2*self.sigTheta2
+        return abs(motion.theta1*self.sigTheta1OnTheta2) + abs(motion.delta*self.sigDeltaOnTheta2) + abs(motion.theta2*self.sigTheta2)
 
 # Motion
 #   contains information about a single motion: initial turn, displacement, final turn

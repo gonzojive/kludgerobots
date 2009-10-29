@@ -151,7 +151,7 @@ class Visualizer:
 
     def vizPoseArray(self, poses):
         poseArray = PoseArray()
-        poseArray.header.frame_id = "/odom"
+        poseArray.header.frame_id = "/map"
         for p in poses:
             poseArray.poses.append(Pose())
             poseArray.poses[-1].position.x = p.x
@@ -166,7 +166,7 @@ class Visualizer:
 
     def vizPoints(self, points, the_id=None):
         marker = Marker()
-        marker.header.frame_id = "/base_laser"
+        marker.header.frame_id = "/map"
         marker.ns = "basic_shapes"
         if the_id:
             marker.id = the_id

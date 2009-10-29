@@ -37,12 +37,13 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0.0, 0.0, 0.0)
-        self.numDesiredPoses = 50 # used during resampling
+        self.numDesiredPoses = 200 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         #self._pFilter.poseSet.initializeUniformStochastic( [-1, 1], [-1, 1], [0, 2*math.pi] )
-        self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/4.0] )
+        self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )
         self.startTime = rospy.Time.now()
         self.mapModel = mapmodel.MapModel(initialPose)
+        self.viz = viz
 
 
     # displayPoses(): draws the current poseSet to rviz
@@ -114,7 +115,7 @@ class ParticleFilter(threading.Thread):
             # the particle cloud.
             self.predictionStep(motion)
             # 2. Localize ourselves (update step) given some sensor readings
-            #self.updateStep(laserScan)
+            self.updateStep(laserScan)
             self.resampleStep()
             # tell the world where this particle filter thinks we are
             self.updateMapTf()
@@ -123,7 +124,8 @@ class ParticleFilter(threading.Thread):
 
     def updateMapTf(self):
         self.updatePoseAverage()
-        self.mapModel.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
+        # rviz cannot handle this, or we can't
+        #self.mapModel.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
 
     def updatePoseAverage(self):
         self.poseAverage = pose.Pose(0,0,0)
@@ -185,32 +187,49 @@ class ParticleFilter(threading.Thread):
         #       - sensor reading may consist of many laser beam readings which are multiplied together
         #    P( sensor reading | pose) becomes the new weight for the particle
         #    maybe normalize the weights
+        poseNum = 0
         for pose in self.poseSet.poses:
-            pSensorReadingGivenPose = self.calculateSensorReadingGivenPose(laserScan, pose)
+            vizid = poseNum + 10000 if (poseNum % 50) == 0 else False
+            pSensorReadingGivenPose = self.pSensorReadingGivenPose(laserScan, pose, vizid)
             pose.weight = pSensorReadingGivenPose
+            poseNum += 1
+
+        self.displayPoses() # poses have changed, so draw the new ones
         self.normalizeWeights()
 
     def resampleStep(self):
         for p in self.poseSet.poses:
             rospy.loginfo("Pose weight: %f", p.weight)
-        self.poseSet.poses = statutil.lowVarianceSample(self.poseSet.poses, self.numDesiredPoses)
+        weights = [p.weight for p in self.poseSet.poses]
+        # we perform destructive acts on the poses, so clone them
+        generatedPoses = statutil.lowVarianceSample2(self.poseSet.poses, weights, self.numDesiredPoses)
+        sampledPoses = [p.clonePose() for p in generatedPoses]
+        self.poseSet.poses = sampledPoses
         if len(self.poseSet.poses) != self.numDesiredPoses:
             raise Exception("Not cool--sampling did not return requested number of objects.  Got back %i" % len(self.poseSet.poses))
 
-    def calculateSensorReadingGivenPose(self, laserScan, pose):
+    def pSensorReadingGivenPose(self, laserScan, pose, vizid=False):
         # pseudocode:
         # for each laser beam in the laser scan, calculate the probabability
         laserBeamVectors = laser.laserScanToVectors(laserScan)
+        
+        # visualization of points in map
+        if vizid:
+            debugPoints = [pose.inMapFrame(vLaserBeam) for vLaserBeam in laserBeamVectors]
+            debugPoints = filter(lambda p : self.mapModel.pointInBounds(p), debugPoints)
+            self.viz.vizPoints(debugPoints, vizid)
+        
         pLaserBeamsGivenPose = [self.pLaserBeamGivenPose(vLaserBeam, pose) for vLaserBeam in laserBeamVectors]
-        product = 1.0
-        n = 0
+        sumLogProbabilities = 0.0
+
         for p in pLaserBeamsGivenPose:
-            product *= p
-            n += 1
-            rospy.loginfo("product %i = %f * %f", n, product, p)
-            if n > 2:
-                break
-        return product
+            sumLogProbabilities += math.log(p)
+
+        rospy.loginfo("sumLogProbabilities = %f ", sumLogProbabilities)
+        result = math.exp(sumLogProbabilities)
+        #result = sumLogProbabilities
+
+        return result
 
     def pLaserBeamGivenPose(self, vLaserBeam, pose):
         vLaserBeamInMapFrame = pose.inMapFrame(vLaserBeam)
@@ -218,16 +237,20 @@ class ParticleFilter(threading.Thread):
         stdDev = 1.34
         pGauss = statutil.gaussianProbability(0, stdDev, d)
         pUniform = 1.0/12.0
-        weightGauss = .1
-        weightUniform = .9
+        weightGauss = .2
+        weightUniform = .8
 
-        rospy.loginfo("pGauss: %f", pGauss)
+        #rospy.loginfo("pGauss: %f", pGauss)
 
         return weightGauss*pGauss + weightUniform*pUniform
         
     def cullIllegalPoses(self):
+        dbgOrigLen = len(self.poseSet.poses)
         if self.mapModel:    # if we have a valid map, cull the poses that are in illegal positions
             self.poseSet.poses = filter(lambda p: self.mapModel.inBounds(p), self.poseSet.poses)
+        dbgLateLen = len(self.poseSet.poses)
+        rospy.loginfo("culled %i poses from %i to %i", dbgOrigLen - dbgLateLen, dbgOrigLen, dbgLateLen)
+        
 
     def normalizeWeights(self):
         s = sum([p.weight for p in self.poseSet.poses])

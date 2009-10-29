@@ -62,8 +62,8 @@ def lowVarianceSample2(objects, weights, newSize):
                 i = i + 1
                 c = c + weights[i]
             yield objects[i]
-        
-def lowVarianceSample(objects, samples = None):
+
+def lowVarianceSampleBuggy(objects, samples = None):
     if not samples or samples <= 0:
         if samples <= 0 or len(objects) == 0:
             raise Exception("Invalid number of samples provided.")

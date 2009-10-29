@@ -15,6 +15,9 @@ class Pose:
         self.theta = theta
         self.weight = weight
 
+    def clonePose(self):
+        return Pose(self.x, self.y, self.theta, self.weight)
+
     # the pose itself is in the map frame, we just need to undo the
     # rotation and apply the translation
     def inMapFrame(self, pt):
@@ -42,7 +45,7 @@ class PoseSet:
     # drawArrows(): send each pose out to rviz as an arrow
     # this never changes the poses, and it's too large to lock for the whole function, so it may show
     # inconsistencies if the filter is updating while this is drawing to rviz
-    def display(self, type = "arrows", displayColor = None):
+    def display(self, type = "poses", displayColor = None):
         idNumber = 1
         if type == "arrows":
             for p in self.poses:
