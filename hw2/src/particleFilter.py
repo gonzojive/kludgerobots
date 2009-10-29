@@ -46,6 +46,7 @@ class ParticleFilter(threading.Thread):
         self.mapModel = mapmodel.MapModel(initialPose)
         self.viz = viz
         self.full = full    # whether to do the full filter or just the prediction step
+        self.numBeamVectors = 10
 
 
     # displayPoses(): draws the current poseSet to rviz
@@ -199,6 +200,25 @@ class ParticleFilter(threading.Thread):
         #       - sensor reading may consist of many laser beam readings which are multiplied together
         #    P( sensor reading | pose) becomes the new weight for the particle
         #    maybe normalize the weights
+
+        avgWeight = self.poseSet.avgWeight()
+        avgWeightPerBeam = avgWeight * float(self.numBeamVectors)
+        rospy.loginfo("Average pose weight: %f per beam: %f", avgWeight, avgWeightPerBeam)
+        # good values are near .12
+        if self.poseAverage:
+            for p in self.mapModel.generatePosesNearPose(self.poseAverage, 3.0, 20):
+                self.poseSet.poses.append(p)
+            # if we suck, generate a bunch of poses around our current poses and add them to the frame
+            if avgWeightPerBeam < .003 and self.poseAverage:
+                for p in self.mapModel.generatePosesNearPose(self.poseAverage, 3.0, 100):
+                    self.poseSet.poses.append(p)
+
+            # if we REALLY suck, we are kidnapped
+            if avgWeight < -39.5 and False:
+                for p in self.mapModel.generatePosesOverWholeMap(200):
+                    self.poseSet.poses.append(p)
+        
+
         poseNum = 0
         for pose in self.poseSet.poses:
             #vizid = poseNum + 10000 if (poseNum % 50) == 0 else False
@@ -228,6 +248,8 @@ class ParticleFilter(threading.Thread):
         # pseudocode:
         # for each laser beam in the laser scan, calculate the probabability
         laserBeamVectors = laser.laserScanToVectors(laserScan)
+
+        self.numBeamVectors = len(laserBeamVectors)
         
         # visualization of points in map
         if vizid:

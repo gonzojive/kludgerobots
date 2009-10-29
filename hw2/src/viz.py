@@ -17,7 +17,7 @@ from geometry_msgs.msg import *
 from roslib.rostime import Duration
 
 LINE_WIDTH = .02
-POINT_WIDTH = .04
+POINT_WIDTH = .1
 
 class Visualizer:
     def __init__(self):

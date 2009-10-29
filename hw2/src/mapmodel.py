@@ -138,12 +138,19 @@ class MapModel:
         try:
             stream = file(fname, 'r')
             result = marshal.load(stream)
-            return result
         except IOError, exc:
             result = self.computeDistanceFromObstacleGrid()
             stream = file(fname, 'w')
             marshal.dump(result, stream)
-            return result
+
+        # now we update the out of bounds obstacle grid locations to double their distance
+        for [ xDiscrete, yDiscrete ] in self.allOutOfBoundsDiscreteGridCoordinates():
+            dist =  self.gridValueAtDiscreteCoordinate(result, xDiscrete, yDiscrete)
+            dist = dist * 2.2
+            self.setGridValueAtDiscreteCoordinate(result, xDiscrete, yDiscrete, dist)
+
+        return result
+        
 
     # returns the float-valued point that corresponds to the given grid cell
     def discreteGridRefToReal(self, xDiscrete, yDiscrete):
@@ -167,6 +174,11 @@ class MapModel:
             if self.pointInBounds(pt):
                 yield pt
 
+    def allOutOfBoundsDiscreteGridCoordinates(self):
+        for pt in self.allDiscreteGridCoordinates():
+            if not self.pointInBounds(pt):
+                yield pt
+
     def generatePosesOverWholeMap(self, n):
         for i in xrange(0, n):
             x = int(self.meta.width * random.random())
@@ -177,10 +189,10 @@ class MapModel:
                 theta = random.random() * 2.0 * math.pi
                 yield pose.Pose(realPt[0], realPt[1], theta)
 
-    def generatePosesNearPose(self, pose, stdDeviation, n):
+    def generatePosesNearPose(self, p, stdDeviation, n):
         for i in xrange(0, n):
-            realPt = statutil.randomMultivariateGaussian([ [pose.x, stdDeviation],
-                                                           [pose.y, stdDeviation]])
+            realPt = statutil.randomMultivariateGaussian([ [p.x, stdDeviation],
+                                                           [p.y, stdDeviation]])
             if self.pointInBounds(realPt):
                 # rando theta
                 theta = random.random() * 2.0 * math.pi
