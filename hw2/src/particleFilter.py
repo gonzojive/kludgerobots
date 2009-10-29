@@ -37,7 +37,7 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0.0, 0.0, 0.0)
-        self.numDesiredPoses = 200 # used during resampling
+        self.numDesiredPoses = 400 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         #self.poseSet.initializeUniformStochastic( [0, 50], [0, 50], [0, 2*math.pi] )
         self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )

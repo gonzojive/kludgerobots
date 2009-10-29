@@ -17,21 +17,23 @@ def showImageRowCol(data, width, height):
 
 def showMapImageRowCol(data, width, height):
     im = PIL.Image.new('L', (width,height))  # 'P' for palettized
-    maxData = max(data)
-
     def clampValue(val):
         if val > 2:
-            val = 2
+            val = 2.0
         return val
 
     data = [clampValue(d) for d in data]
-    
+
+    maxData = max(data)
     def normalizeValue(val):
-        int(float(val) / float(maxData) * 255.0)
+        int(255.0 * float(val)  / float(maxData))
         
     dataScaled = [normalizeValue(d) for d in data]
     im.putdata(dataScaled)
     im.show()
+    
+    im.save("/tmp/thingy.png", "PNG")
+            
 
 
 def showHistPlotOfNums(nums, numFields=50):
