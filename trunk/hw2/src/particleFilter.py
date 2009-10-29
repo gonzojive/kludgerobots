@@ -86,6 +86,7 @@ class ParticleFilter(threading.Thread):
     #   odom -- the new odometry reading, currently in [[x, y], angle] format
     def receiveOdom(self, odom):
         #self.testCaster()
+        rospy.loginfo("in receiveOdom: odom = %0.2f, %0.2f, %0.2f", odom[0][0], odom[0][1], odom[1])
         self.runFilterLock.acquire()    # <---grab the lock--->
         self.newOdom = odom[0] + [odom[1]]  # convert from [[x, y], a] to [x, y, a]
         if self.runFilter == 0:
@@ -94,6 +95,8 @@ class ParticleFilter(threading.Thread):
             if manhattanDist >= minimumMovement or angleDiff >= minimumTurn:
                 self.runFilter = 1  # run the filter next time the thread opens up
         self.runFilterLock.release()    # <---release the lock--->
+        
+  
 
     # run(): the main threading call
     # does a busy wait until needed, which is wasteful, but the alternative is to use events, where the danger is
@@ -272,7 +275,7 @@ class ParticleFilter(threading.Thread):
     def pLaserBeamGivenPose(self, vLaserBeam, pose):
         vLaserBeamInMapFrame = pose.inMapFrame(vLaserBeam)
         d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
-        stdDev = 1.34
+        stdDev = 10.0
         pGauss = statutil.gaussianProbability(0, stdDev, d)
         pUniform = 1.0/12.0
         weightGauss = .2
