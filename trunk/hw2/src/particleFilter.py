@@ -205,6 +205,8 @@ class ParticleFilter(threading.Thread):
         #    maybe normalize the weights
 
         avgWeight = self.poseSet.avgWeight()
+        # this is not truly the weight per beam (that would be avgWeight ** float(self.numBeamVectors), but
+        # it should sort of maybe in some cases correct for differing number of beams per cast.  And it works!
         avgWeightPerBeam = avgWeight * float(self.numBeamVectors)
         varPerBeamWeight = statutil.variance( [o.weight * float(self.numBeamVectors) for o in self.poseSet.poses] )
         rospy.loginfo("Average pose weight: %f per beam: %f (variance: %f)", avgWeight, varPerBeamWeight, avgWeightPerBeam)
@@ -225,19 +227,16 @@ class ParticleFilter(threading.Thread):
                 for p in self.mapModel.generatePosesOverWholeMap(30):
                     self.poseSet.poses.append(p)
 
-            # if the average probability reallly sucks then update the map a lot
-            if avgWeightPerBeam < .002 and self.poseAverage and False:
+            # if the average probability reallly sucks then add a bunch of points from all over
+            # the map (the kidnapped robot problem)
+            if avgWeightPerBeam < .003 and self.poseAverage:
                 # 80 points from mostly within 8 meters
-                for p in self.mapModel.generatePosesNearPose(self.poseAverage, 8.0, 80):
+                for p in self.mapModel.generatePosesNearPose(self.poseAverage, 8.0, 30):
                     self.poseSet.poses.append(p)
                 # more points from the whole map
-                for p in self.mapModel.generatePosesOverWholeMap(30):
+                for p in self.mapModel.generatePosesOverWholeMap(100):
                     self.poseSet.poses.append(p)
 
-            # if we REALLY suck, we are kidnapped
-            if avgWeight < -39.5 and False:
-                for p in self.mapModel.generatePosesOverWholeMap(200):
-                    self.poseSet.poses.append(p)
         
 
         poseNum = 0
