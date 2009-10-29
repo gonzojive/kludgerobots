@@ -112,6 +112,9 @@ class MapModel:
     def inBounds(self, pose):
         return self.probeAtPoint([pose.x, pose.y]) < 0.5
 
+    def pointInBounds(self, xy):
+        return self.probeAtPoint(xy) < 0.5
+
     def _annotateMapMetaData(self):
         meta = self.meta
 

@@ -88,7 +88,21 @@ def laserReadingToCartesianPoints(reading, position):
 
 def laserScanToVectors(laserScan):
     # FIXME: discard readings > 12 meters
-    ranges = laserScan.ranges
-    return map(lambda rng,i: polarToCartesian(rng, laserRangeAngle(i, ranges)), ranges, xrange(0, len(ranges)))
+    # filter out the maxrange stuff
+    ranges = filter(lambda r: r < 11.5, laserScan.ranges)
+
+    # take only every tenth range because we don't want to do too much computation and
+    # also don't want to take too big of an exponent
+    filteredRanges = laserScan.ranges[0:-1:10]
+    #n = 0
+    #for r in ranges:
+    #    if  n % 10 == 0:
+    #        filteredRanges.append(r)
+    #    n += 1
+    ranges = filteredRanges
+    
+    result = map(lambda rng,i: polarToCartesian(rng, laserRangeAngle(i, ranges)), ranges, xrange(0, len(ranges)))
+    return result
+
         
     
