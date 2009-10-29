@@ -206,14 +206,32 @@ class ParticleFilter(threading.Thread):
 
         avgWeight = self.poseSet.avgWeight()
         avgWeightPerBeam = avgWeight * float(self.numBeamVectors)
-        rospy.loginfo("Average pose weight: %f per beam: %f", avgWeight, avgWeightPerBeam)
+        varPerBeamWeight = statutil.variance( [o.weight * float(self.numBeamVectors) for o in self.poseSet.poses] )
+        rospy.loginfo("Average pose weight: %f per beam: %f (variance: %f)", avgWeight, varPerBeamWeight, avgWeightPerBeam)
         # good values are near .12
-        if self.poseAverage:
+        if self.poseAverage: # (after we have initiailized)
+            # add a bunch of random points sort of nearby no matter what.
             for p in self.mapModel.generatePosesNearPose(self.poseAverage, 3.0, 20):
                 self.poseSet.poses.append(p)
-            # if we suck, generate a bunch of poses around our current poses and add them to the frame
-            if avgWeightPerBeam < .003 and self.poseAverage:
-                for p in self.mapModel.generatePosesNearPose(self.poseAverage, 3.0, 100):
+            # if the variance of our per beam probabilities is high, we are not
+            # localized, so add a bunch of points in a fairly broad range
+            #if varPerBeamWeight:
+            # if our beam probabilities suck,
+            # generate a bunch of poses around our current pose and add them to the frame.
+            # also add a bunch of poses uniformly distributed about the map
+            if avgWeightPerBeam < .009 and self.poseAverage:
+                for p in self.mapModel.generatePosesNearPose(self.poseAverage, 5.0, 30):
+                    self.poseSet.poses.append(p)
+                for p in self.mapModel.generatePosesOverWholeMap(30):
+                    self.poseSet.poses.append(p)
+
+            # if the average probability reallly sucks then update the map a lot
+            if avgWeightPerBeam < .002 and self.poseAverage and False:
+                # 80 points from mostly within 8 meters
+                for p in self.mapModel.generatePosesNearPose(self.poseAverage, 8.0, 80):
+                    self.poseSet.poses.append(p)
+                # more points from the whole map
+                for p in self.mapModel.generatePosesOverWholeMap(30):
                     self.poseSet.poses.append(p)
 
             # if we REALLY suck, we are kidnapped
@@ -275,7 +293,7 @@ class ParticleFilter(threading.Thread):
     def pLaserBeamGivenPose(self, vLaserBeam, pose):
         vLaserBeamInMapFrame = pose.inMapFrame(vLaserBeam)
         d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
-        stdDev = 10.0
+        stdDev = 1.34
         pGauss = statutil.gaussianProbability(0, stdDev, d)
         pUniform = 1.0/12.0
         weightGauss = .2
