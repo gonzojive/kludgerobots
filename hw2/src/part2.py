@@ -15,6 +15,7 @@ import mapmodel
 import geometry_msgs
 import nav_msgs
 import laser
+import time
 
 from sensor_msgs.msg import LaserScan
 
@@ -26,8 +27,10 @@ class Part2():
         self._visualizer = viz.Visualizer()
         self._move = move.MoveFromKeyboard(self._visualizer)
         self._pFilter = None
+        self.mapModel = None
         # I have no idea what good error values are
         self._motionErr = motionModel.MotionErrorModel(0.1, 0.1, 0.1, 0.1, 0.1, 0.1)
+        self.initialPose = pose.Pose(34.0, 46.0, 0.0)
         #self._motionErr = None  # test only, assumes no error
 
     def robotPosition(self):
@@ -47,7 +50,8 @@ class Part2():
                                                       self._motionErr,
                                                       self.odoListener(),
                                                       # initial pose in the MAP frame
-                                                      pose.Pose(34.0, 46.0, 0.0))
+                                                      self.initialPose,
+                                                      self.mapModel)
         self._pFilter.updateMapTf()    # initialize the best guess and sent it to tf
         self._pFilter.displayPoses()
         self._pFilter.start()   # threading function, calls our overloaded run() function and begins execution
@@ -89,6 +93,15 @@ class Part2():
                 continue
         
         self.robotPosition().resetOdom(trans, rot)
+        self.mapModel = mapmodel.MapModel(self.initialPose)
+        
+        while not self.mapModel.initializedp():
+            try:
+                time.sleep(1.0)
+            except (tf.LookupException, tf.ConnectivityException):
+                continue
+        
+
         self.initFilter()
 
         # while we are not shutdown by the ROS, keep updating

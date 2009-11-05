@@ -26,7 +26,7 @@ class ParticleFilter(threading.Thread):
     # motionErr - and instance of MotionErrorModel
     # transformer - the odometry object that we use to transform between frames
     # initialPose - the initial guess of the robot in the Map frame (an instance of Pose)
-    def __init__(self, odom, viz, laser, motionErr, transformer, initialPose, full = True):
+    def __init__(self, odom, viz, laser, motionErr, transformer, initialPose, mm, full = True):
         threading.Thread.__init__(self) # initialize the threading package
         self.transformer = transformer
         # lastOdom stores
@@ -39,11 +39,15 @@ class ParticleFilter(threading.Thread):
         self.poseAverage = pose.Pose(0.0, 0.0, 0.0)
         self.numDesiredPoses = 400 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
-        #self.poseSet.initializeUniformStochastic( [0, 50], [0, 50], [0, 2*math.pi] )
-        self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )
+        self.mapModel = mm
+        #self.poseSet.initializeUniformStochastic( [initialPose.x - 15.0, initialPose.x + 15.0],
+        #                                          [initialPose.y - 25.0, initialPose.y + 3.0],
+        #                                          [0, 2*math.pi] )
+        self.poseSet.poses = [p for p in self.mapModel.generatePosesOverWholeMap(self.numDesiredPoses)]
+        #self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )
+        #self.poseSet.initializeGaussian( [initialPose.x, .01], [initialPose.y, 0.01], [initialPose.theta, math.pi/10029.0] )
         self.updatePoseAverage()
         self.startTime = rospy.Time.now()
-        self.mapModel = mapmodel.MapModel(initialPose)
         self.viz = viz
         self.full = full    # whether to do the full filter or just the prediction step
         self.numBeamVectors = 10
@@ -222,6 +226,7 @@ class ParticleFilter(threading.Thread):
             # generate a bunch of poses around our current pose and add them to the frame.
             # also add a bunch of poses uniformly distributed about the map
             if avgWeightPerBeam < .009 and self.poseAverage:
+                rospy.loginfo("(a few) MORE POSES!")
                 for p in self.mapModel.generatePosesNearPose(self.poseAverage, 5.0, 30):
                     self.poseSet.poses.append(p)
                 for p in self.mapModel.generatePosesOverWholeMap(30):
@@ -230,6 +235,7 @@ class ParticleFilter(threading.Thread):
             # if the average probability reallly sucks then add a bunch of points from all over
             # the map (the kidnapped robot problem)
             if avgWeightPerBeam < .003 and self.poseAverage:
+                rospy.loginfo("MORE POSES!")
                 # 80 points from mostly within 8 meters
                 for p in self.mapModel.generatePosesNearPose(self.poseAverage, 8.0, 30):
                     self.poseSet.poses.append(p)
