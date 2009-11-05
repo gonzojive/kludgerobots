@@ -14,16 +14,16 @@ import math
 import util
 import statutil
 
-def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
+def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets, doNegOnes=False):
     # f prefix float i discrete
     fSizeOfBucket = float(maxFloat - minFloat) / float(numBuckets)
     iBucket = int( float(f - minFloat) / fSizeOfBucket)
     if iBucket < 0:
-        return 0
+        return -1 if doNegOnes else 0
     elif iBucket >= numBuckets:
         return numBuckets - 1
     else:
-        return iBucket
+        return -1 if doNegOnes else iBucket
 
 
 class MapModel:
@@ -180,11 +180,15 @@ class MapModel:
                 yield pt
 
     def generatePosesOverWholeMap(self, n):
-        for i in xrange(0, n):
+        i = 0
+        while True:
+            if i > n:
+                break
             x = int(self.meta.width * random.random())
             y = int(self.meta.height * random.random())
             realPt = self.discreteGridRefToReal(x, y)
             if self.pointInBounds(realPt):
+                i += 1
                 # rando theta
                 theta = random.random() * 2.0 * math.pi
                 yield pose.Pose(realPt[0], realPt[1], theta)
@@ -317,8 +321,10 @@ class MapModel:
     # givena  point returns the distance to the nearest obstacle.  Operates in constant time
     def distanceFromObstacleAtPoint(self, pt):
         if self.initializedp():
-            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, self.meta.width)
-            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, self.meta.height)
+            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, self.meta.width, True)
+            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, self.meta.height, True)
+            if not xDiscrete or not yDiscrete:
+                return 5.0
             # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
             # the grid has values between 0 and 100, and -1 for unknown
             distanceToObstacle = self.dgrid[yDiscrete * self.meta.width + xDiscrete]
@@ -332,6 +338,11 @@ class MapModel:
         meta = self.meta
         xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, meta.width)
         yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, meta.height)
+
+        
+        probabilityOfOccupancy = None
+        if xDiscrete == -1 or yDiscrete == -1:
+            probabilityOfOccupancy = 0
         # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
         probabilityOfOccupancy = ord(self.grid[yDiscrete * meta.width + xDiscrete])
