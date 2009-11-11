@@ -33,6 +33,7 @@ class Part2():
         self.initialPose = pose.Pose(34.0, 46.0, 0.0)
         #self._motionErr = None  # test only, assumes no error
 
+
     def robotPosition(self):
         return self._position
 
@@ -43,7 +44,6 @@ class Part2():
         return self._odoListener
 
     def initFilter(self):
-        # will eventually want to pass in an error model
         self._pFilter = particleFilter.ParticleFilter(self.robotPosition().position(),
                                                       self._visualizer,
                                                       self.laserInterpreter(),
@@ -93,14 +93,10 @@ class Part2():
                 continue
         
         self.robotPosition().resetOdom(trans, rot)
+
         self.mapModel = mapmodel.MapModel(self.initialPose)
-        
         while not self.mapModel.initializedp():
-            try:
-                time.sleep(1.0)
-            except (tf.LookupException, tf.ConnectivityException):
-                continue
-        
+            pass
 
         self.initFilter()
 

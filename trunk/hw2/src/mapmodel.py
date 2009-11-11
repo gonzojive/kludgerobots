@@ -193,6 +193,7 @@ class MapModel:
                 theta = random.random() * 2.0 * math.pi
                 yield pose.Pose(realPt[0], realPt[1], theta)
 
+
     def generatePosesNearPose(self, p, stdDeviation, n):
         for i in xrange(0, n):
             realPt = statutil.randomMultivariateGaussian([ [p.x, stdDeviation],
@@ -325,12 +326,15 @@ class MapModel:
             yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, self.meta.height, True)
             if not xDiscrete or not yDiscrete:
                 return 5.0
+            if not xDiscrete or not yDiscrete:
+                return 5.0
             # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
             # the grid has values between 0 and 100, and -1 for unknown
             distanceToObstacle = self.dgrid[yDiscrete * self.meta.width + xDiscrete]
             return distanceToObstacle
         else:
             return -1
+
             
     # returns whether the map at the given point is occupied
     def probeAtPoint(self, pt):
