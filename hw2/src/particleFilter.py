@@ -223,7 +223,6 @@ class ParticleFilter(threading.Thread):
             # generate a bunch of poses around our current pose and add them to the frame.
             # also add a bunch of poses uniformly distributed about the map
             if avgWeightPerBeam < .009 and self.poseAverage:
-                rospy.loginfo("(a few) MORE POSES!")
                 for p in self.mapModel.generatePosesNearPose(self.poseAverage, 5.0, 30):
                     self.poseSet.poses.append(p)
                 for p in self.mapModel.generatePosesOverWholeMap(30):
@@ -232,7 +231,6 @@ class ParticleFilter(threading.Thread):
             # if the average probability reallly sucks then add a bunch of points from all over
             # the map (the kidnapped robot problem)
             if avgWeightPerBeam < .003 and self.poseAverage:
-                rospy.loginfo("MORE POSES!")
                 # 80 points from mostly within 8 meters
                 for p in self.mapModel.generatePosesNearPose(self.poseAverage, 8.0, 30):
                     self.poseSet.poses.append(p)

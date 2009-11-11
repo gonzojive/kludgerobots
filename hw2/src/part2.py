@@ -15,7 +15,6 @@ import mapmodel
 import geometry_msgs
 import nav_msgs
 import laser
-import time
 
 from sensor_msgs.msg import LaserScan
 

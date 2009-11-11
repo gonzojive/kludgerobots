@@ -14,16 +14,16 @@ import math
 import util
 import statutil
 
-def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets, doNegOnes=False):
+def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
     # f prefix float i discrete
     fSizeOfBucket = float(maxFloat - minFloat) / float(numBuckets)
     iBucket = int( float(f - minFloat) / fSizeOfBucket)
     if iBucket < 0:
-        return -1 if doNegOnes else 0
+        return 0
     elif iBucket >= numBuckets:
         return numBuckets - 1
     else:
-        return -1 if doNegOnes else iBucket
+        return iBucket
 
 
 class MapModel:
@@ -322,10 +322,8 @@ class MapModel:
     # givena  point returns the distance to the nearest obstacle.  Operates in constant time
     def distanceFromObstacleAtPoint(self, pt):
         if self.initializedp():
-            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, self.meta.width, True)
-            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, self.meta.height, True)
-            if not xDiscrete or not yDiscrete:
-                return 5.0
+            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, self.meta.width)
+            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, self.meta.height)
             if not xDiscrete or not yDiscrete:
                 return 5.0
             # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
@@ -342,11 +340,6 @@ class MapModel:
         meta = self.meta
         xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, meta.width)
         yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, meta.height)
-
-        
-        probabilityOfOccupancy = None
-        if xDiscrete == -1 or yDiscrete == -1:
-            probabilityOfOccupancy = 0
         # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
         probabilityOfOccupancy = ord(self.grid[yDiscrete * meta.width + xDiscrete])
