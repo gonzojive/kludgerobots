@@ -40,17 +40,14 @@ class ParticleFilter(threading.Thread):
         self.numDesiredPoses = 400 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         self.mapModel = mm
-        #self.poseSet.initializeUniformStochastic( [initialPose.x - 15.0, initialPose.x + 15.0],
-        #                                          [initialPose.y - 25.0, initialPose.y + 3.0],
-        #                                          [0, 2*math.pi] )
         self.poseSet.poses = [p for p in self.mapModel.generatePosesOverWholeMap(self.numDesiredPoses)]
         #self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )
-        #self.poseSet.initializeGaussian( [initialPose.x, .01], [initialPose.y, 0.01], [initialPose.theta, math.pi/10029.0] )
         self.updatePoseAverage()
         self.startTime = rospy.Time.now()
         self.viz = viz
         self.full = full    # whether to do the full filter or just the prediction step
         self.numBeamVectors = 10
+
 
 
     # displayPoses(): draws the current poseSet to rviz
@@ -90,7 +87,7 @@ class ParticleFilter(threading.Thread):
     #   odom -- the new odometry reading, currently in [[x, y], angle] format
     def receiveOdom(self, odom):
         #self.testCaster()
-        rospy.loginfo("in receiveOdom: odom = %0.2f, %0.2f, %0.2f", odom[0][0], odom[0][1], odom[1])
+        #rospy.loginfo("in receiveOdom: odom = %0.2f, %0.2f, %0.2f", odom[0][0], odom[0][1], odom[1])
         self.runFilterLock.acquire()    # <---grab the lock--->
         self.newOdom = odom[0] + [odom[1]]  # convert from [[x, y], a] to [x, y, a]
         if self.runFilter == 0:
@@ -257,8 +254,8 @@ class ParticleFilter(threading.Thread):
             
 
     def resampleStep(self):
-        for p in self.poseSet.poses:
-            rospy.loginfo("Pose weight: %f", p.weight)
+        #for p in self.poseSet.poses:
+        #    rospy.loginfo("Pose weight: %f", p.weight)
         weights = [p.weight for p in self.poseSet.poses]
         # we perform destructive acts on the poses, so clone them
         generatedPoses = statutil.lowVarianceSample2(self.poseSet.poses, weights, self.numDesiredPoses)

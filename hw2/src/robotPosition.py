@@ -24,8 +24,8 @@ class RobotPosition:
         self.odomTrans[0] = t[0] - self.odomTrans0[0]
         self.odomTrans[1] = t[1] - self.odomTrans0[1]
         self.odomRot = quatToAngleAboutPositiveZ(r)
-        if self.previous[0] != self.odomTrans[0] or self.previous[1] != self.odomTrans[1] or self.previous[2] != self.odomRot:
-            self.logPosInfo()
+        #if self.previous[0] != self.odomTrans[0] or self.previous[1] != self.odomTrans[1] or self.previous[2] != self.odomRot:
+        #    self.logPosInfo()
     def addMapRotationOffset(self, offset):  # just offset the current reading
         self.mapRot += offset
 
