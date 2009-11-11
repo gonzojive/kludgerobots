@@ -138,7 +138,9 @@ class MapModel:
         try:
             stream = file(fname, 'r')
             result = marshal.load(stream)
+            rospy.loginfo("Map was successfully loaded from " + fname);
         except IOError, exc:
+            rospy.loginfo("Map failed to load from " + fname);
             result = self.computeDistanceFromObstacleGrid()
             stream = file(fname, 'w')
             marshal.dump(result, stream)
@@ -241,7 +243,7 @@ class MapModel:
         for [xDiscrete, yDiscrete] in self.allDiscreteGridCoordinates():
             nearestObstacle = None
             if self.gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete):
-                nearestObstacle = discreteGridRefToReal(xDiscrete, yDiscrete)
+                nearestObstacle = self.discreteGridRefToReal(xDiscrete, yDiscrete)
             self.setGridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete, nearestObstacle)
 
 
@@ -259,7 +261,7 @@ class MapModel:
             numUpdatedGridCells = 0
             for [xDiscrete, yDiscrete] in self.allDiscreteGridCoordinates():
                 # point in space does this grid coordinate corresponds to
-                realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
+                realPoint = self.discreteGridRefToReal(xDiscrete, yDiscrete)
                 def distSquaredToObstacle(pt):
                     vToPt = vector_minus(pt, realPoint)
                     return vector_length_squared(vToPt)
@@ -292,7 +294,7 @@ class MapModel:
         # obstacle and return a grid with the result
         for [xDiscrete, yDiscrete] in self.allDiscreteGridCoordinates():
             # get the point corresponding to this cell
-            realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
+            realPoint = self.discreteGridRefToReal(xDiscrete, yDiscrete)
             # get the nearest obstacle to that point
             nearestObstacle = self.gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete)
             nearestObstacleDist = 2.5 # default to 2.5 meters
@@ -374,11 +376,6 @@ class MapModel:
     
     def computeDistanceFromObstacleGridWild(self):
         # create a row-major grid that holds the nearest obstacle from
-        # each point in the original map grid
-
-        def discreteGridRefToReal(xDiscrete, yDiscrete):
-            res = self.meta.resolution
-            return [float(xDiscrete) * res + self.xMin, float(yDiscrete) * res + self.yMin]
 
         # the grid has a value between 0 and 100 that indicates the
         # probability that an element of the grid is occupied.  We
@@ -411,7 +408,7 @@ class MapModel:
         for [xDiscrete, yDiscrete] in self.allDiscreteGridCoordinates():
             nearestObstacle = None
             if self.gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete):
-                nearestObstacle = discreteGridRefToReal(xDiscrete, yDiscrete)
+                nearestObstacle = self.discreteGridRefToReal(xDiscrete, yDiscrete)
             self.setGridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete, nearestObstacle)
 
 
@@ -429,7 +426,7 @@ class MapModel:
             numUpdatedGridCells = 0
             for [xDiscrete, yDiscrete] in self.allDiscreteGridCoordinates():
                 # point in space does this grid coordinate corresponds to
-                realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
+                realPoint = self.discreteGridRefToReal(xDiscrete, yDiscrete)
                 def distSquaredToObstacle(pt):
                     vToPt = vector_minus(pt, realPoint)
                     return vector_length_squared(vToPt)
@@ -462,7 +459,7 @@ class MapModel:
         # obstacle and return a grid with the result
         for [xDiscrete, yDiscrete] in self.allDiscreteGridCoordinates():
             # get the point corresponding to this cell
-            realPoint = discreteGridRefToReal(xDiscrete, yDiscrete)
+            realPoint = self.discreteGridRefToReal(xDiscrete, yDiscrete)
             # get the nearest obstacle to that point
             nearestObstacle = self.gridValueAtDiscreteCoordinate(nearestObstacleGrid, xDiscrete, yDiscrete)
             nearestObstacleDist = 2.5 # default to 2.5 meters
