@@ -39,14 +39,14 @@ class MoveFromKeyboard:
         if cmd[0] == "g":   # setting or removing a goal
             if len(cmd) == 3:   # g x y
                 g = goal.Goal(float(cmd[1]), float(cmd[2]))
-                index = self.goals.goalExists(g)
-                if index >= 0:
+                index = self.goals.goalExists(g)    # check if the goal already exists
+                if index >= 0:  # if it does, delete it
                     rospy.loginfo("Deleted goal: (%s, %s)", cmd[1], cmd[2])
                     self.goals.deleteGoal(index)
-                else:
+                else:   # otherwise, add it
                     rospy.loginfo("New goal: (%s, %s)", cmd[1], cmd[2])
                     self.goals.newGoal(g)
-            elif len(cmd) == 1:
+            elif len(cmd) == 1: # just 'g' on command line means list all goals
                 self.goals.logGoals()
         else:
             rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[0], cmd[1])
