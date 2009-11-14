@@ -2,14 +2,16 @@ import rospy
 import viz
 import select
 import sys
+import goal
 
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Vector3
 
 class MoveFromKeyboard:
-    def __init__(self, viz):
+    def __init__(self, viz, g):
         self.velPublish = rospy.Publisher("commands", Twist) # publish to "commands"
         self.viz = viz
+        self.goals = g
         self.command = None
         self.repeatCommand = 0
         
@@ -33,16 +35,26 @@ class MoveFromKeyboard:
 
     def parseText(self, text):
         cmd = text.split()
-        rospy.loginfo("Command received: %s", text)
-        if len(cmd) < 2:
-            rospy.loginfo("Command error: length is %d, should be at least 2", len(cmd))
-            return None
-        rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[0], cmd[1])
-        self.command = [float(cmd[0]), float(cmd[1])]
-        if len(cmd) >= 3:
-            self.repeatCommand = int(cmd[2])
+        #rospy.loginfo("Command received: %s", text)
+        if cmd[0] == "g":   # setting or removing a goal
+            if len(cmd) == 3:   # g x y
+                g = goal.Goal(float(cmd[1]), float(cmd[2]))
+                index = self.goals.goalExists(g)
+                if index >= 0:
+                    rospy.loginfo("Deleted goal: (%s, %s)", cmd[1], cmd[2])
+                    self.goals.deleteGoal(index)
+                else:
+                    rospy.loginfo("New goal: (%s, %s)", cmd[1], cmd[2])
+                    self.goals.newGoal(g)
+            elif len(cmd) == 1:
+                self.goals.logGoals()
         else:
-            self.repeatCommand = 0
+            rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[0], cmd[1])
+            self.command = [float(cmd[0]), float(cmd[1])]
+            if len(cmd) >= 3:
+                self.repeatCommand = int(cmd[2])
+            else:
+                self.repeatCommand = 0
 
 if __name__ == '__main__':
     m = MoveFromKeyboard(None)

@@ -15,16 +15,18 @@ import mapmodel
 import geometry_msgs
 import nav_msgs
 import laser
+import goal
 
 from sensor_msgs.msg import LaserScan
 
 class Part2():
     def __init__(self):
         self._position = RobotPosition()
+        self._goals = goal.GoalSet()
         self._laser = laser.Laser()
         self._odoListener = None
         self._visualizer = viz.Visualizer()
-        self._move = move.MoveFromKeyboard(self._visualizer)
+        self._move = move.MoveFromKeyboard(self._visualizer, self._goals)
         self._pFilter = None
         self.mapModel = None
         # I have no idea what good error values are
