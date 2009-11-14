@@ -37,7 +37,7 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0.0, 0.0, 0.0)
-        self.numDesiredPoses = 400 # used during resampling
+        self.numDesiredPoses = 500 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         self.mapModel = mm
         self.poseSet.poses = [p for p in self.mapModel.generatePosesOverWholeMap(self.numDesiredPoses)]
@@ -180,13 +180,16 @@ class ParticleFilter(threading.Thread):
     #   odomInitial --  an [x, y, angle] list of the previous odometry reading
     #   odomFinal   --  an [x, y, angle] list of the most recent odometry reading
     def predictionStep(self, motion):
+        theta1Var = math.sqrt(self.motionError.theta1Variance(motion))
+        deltaVar = math.sqrt(self.motionError.deltaVariance(motion))
+        theta2Var = math.sqrt(self.motionError.theta2Variance(motion))
         for p in self.poseSet.poses:
             predict = motionModel.Motion(0,0,0)
             # calculate the error in each movement, and make a new estimated motion
             # don't really want to take a square root every time here, can we just use the variance?
-            predict.theta1 = statutil.randomGaussian(motion.theta1, math.sqrt(self.motionError.theta1Variance(motion)))
-            predict.delta = statutil.randomGaussian(motion.delta, math.sqrt(self.motionError.deltaVariance(motion)))
-            predict.theta2 = statutil.randomGaussian(motion.theta2, math.sqrt(self.motionError.theta2Variance(motion)))
+            predict.theta1 = statutil.randomGaussian(motion.theta1, theta1Var)
+            predict.delta = statutil.randomGaussian(motion.delta, deltaVar)
+            predict.theta2 = statutil.randomGaussian(motion.theta2, theta2Var)
             # convert back to odometry pose
             [dx, dy, dtheta] = motionModel.motionModelToOdom(predict)
             #rospy.loginfo("Motion: %s", predict.toStr())
