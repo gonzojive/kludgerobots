@@ -13,6 +13,7 @@ import random
 import math
 import util
 import statutil
+import sys
 
 def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
     # f prefix float i discrete
@@ -134,7 +135,7 @@ class MapModel:
 
     def getDistanceFromObstacleGrid(self):
         result = None
-        fname = '/tmp/myGatesMapDist.marshal'
+        fname = sys.path[0] + '/../' + 'myGatesMapDist.marshal'
         try:
             stream = file(fname, 'r')
             result = marshal.load(stream)
