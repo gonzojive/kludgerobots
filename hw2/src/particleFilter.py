@@ -56,8 +56,7 @@ class ParticleFilter(threading.Thread):
         self.poseSet.display()
         self.poseSet.displayOne(self.poseAverage, displayColor = [0, 0, 1])
 
-    def displayLasers(self, laserScan):
-        laserBeamVectors = laser.laserScanToVectors(laserScan, 1)
+    def displayLasers(self, laserBeamVectors):
         # visualization of points in map
         debugPoints = [self.poseAverage.inMapFrame(vLaserBeam) for vLaserBeam in laserBeamVectors]
         self.viz.vizPoints(debugPoints, 1000)
@@ -119,7 +118,7 @@ class ParticleFilter(threading.Thread):
             # collect data
             motion = motionModel.odomToMotionModel(self.lastOdom, self.newOdom) # get the motion model
             if self.laser:
-                laserScan = self.laser.latestReading    # get the laser readings
+                laserScan = self.laser.latestReading.ranges    # get the laser readings
 
             self.lastOdom = self.newOdom[:]  # save this new odometry
             self.runFilter = 0  # reset the filter flag
@@ -130,14 +129,19 @@ class ParticleFilter(threading.Thread):
             # 1.  Prediction step.  Use the assumed motion of the robot to update
             # the particle cloud.
             self.predictionStep(motion)
+
+            if self.laser:
+                laserScan = [[laserScan[i], i] for i in xrange(0,len(laserScan))]
+                laserVectors = laser.laserScanToVectors(laserScan, 1)
+
             if self.full:
                 # 2. Localize ourselves (update step) given some sensor readings
-                self.updateStep(laserScan)
+                self.updateStep(laserVectors)
 
             self.updatePoseAverage()
             self.displayPoses() # poses have changed, so draw the new ones
             if self.laser:
-                self.displayLasers(laserScan)
+                self.displayLasers(laserVectors)
 
     def updateMapTf(self):
         "does nothing"
@@ -196,7 +200,7 @@ class ParticleFilter(threading.Thread):
             self.cullIllegalPoses()
 
     
-    def updateStep(self, laserScan):
+    def updateStep(self, laserVectors):
         # pseudocode:
         # for all poses in particle filter:
         #    transform the laser scans into that pose frame
@@ -241,10 +245,11 @@ class ParticleFilter(threading.Thread):
         
 
         poseNum = 0
+        sparseLaserVectors = laserVectors[0:-1:8]   # every 8th reading
         for pose in self.poseSet.poses:
             #vizid = poseNum + 10000 if (poseNum % 50) == 0 else False
             vizid = None
-            pSensorReadingGivenPose = self.pSensorReadingGivenPose(laserScan, pose, vizid)
+            pSensorReadingGivenPose = self.pSensorReadingGivenPose(sparseLaserVectors, pose, vizid)
             pose.weight = pSensorReadingGivenPose
             poseNum += 1
         self.normalizeWeights()
@@ -265,11 +270,9 @@ class ParticleFilter(threading.Thread):
     def vizPoseAndSupposedLaserReadings(self, pose):
         print "just viz the best one here"
 
-    def pSensorReadingGivenPose(self, laserScan, pose, vizid=False):
+    def pSensorReadingGivenPose(self, laserBeamVectors, pose, vizid=False):
         # pseudocode:
         # for each laser beam in the laser scan, calculate the probabability
-        laserBeamVectors = laser.laserScanToVectors(laserScan)
-
         self.numBeamVectors = len(laserBeamVectors)
         
         # visualization of points in map

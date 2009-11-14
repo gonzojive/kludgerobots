@@ -67,42 +67,27 @@ class Laser:
 
 # assuming the laser is 180 degrees, returns what angle the ith laser reading is
 # given an array of laser ranges (which are arranged left to right)
-def laserRangeAngle(i, readingRanges):
-    i = len(readingRanges) - i - 1
-    num_scan_points = len(readingRanges)
-    if num_scan_points > 0:
-        return (1.0 - float(i) / float(num_scan_points)) * pi
+def laserRangeAngle(i, numReadings):
+    i = numReadings - i - 1
+    if numReadings > 0:
+        return (1.0 - float(i) / float(numReadings)) * pi
     else:
         return 0 #degenerate
         
-# Given a laser reading, returns a bunch of cartesian points.
-# to the left is positive y.  straight is positive x
-def laserReadingToCartesianPointsOld(reading, position):
-    pos = position.position()
-    local = map(lambda rng,i: polarToCartesian(rng, laserRangeAngle(i, reading.ranges)+pos[1]), reading.ranges, xrange(0, len(reading.ranges)))
-    return [[p[0]-pos[0][0],p[1]-pos[0][1]] for p in local]
 
-def laserReadingToCartesianPoints(reading, position):
-    pos = position.position()
-    local = map(lambda rng,i: polarToCartesian(rng, laserRangeAngle(i, reading.ranges)+pos[1]), reading.ranges, xrange(0, len(reading.ranges)))
-    return [[p[0]-pos[0][0],p[1]-pos[0][1]] for p in local]
 
 def laserScanToVectors(laserScan, increment = 8):
-    # FIXME: discard readings > 12 meters
     # filter out the maxrange stuff
-    ranges = filter(lambda r: r < 11.5, laserScan.ranges)
+    numReadings = len(laserScan)
+    ranges = filter(lambda r: r[0] < 11.5, laserScan)
 
-    # take only every tenth range because we don't want to do too much computation and
+    # take only occasional range because we don't want to do too much computation and
     # also don't want to take too big of an exponent
-    filteredRanges = laserScan.ranges[0:-1:increment]
-    #n = 0
-    #for r in ranges:
-    #    if  n % 10 == 0:
-    #        filteredRanges.append(r)
-    #    n += 1
-    ranges = filteredRanges
+    if increment != 1:
+        temp = laserScan[0:-1:increment]
+        ranges = temp
     
-    result = map(lambda rng,i: polarToCartesian(rng, laserRangeAngle(i, ranges)), ranges, xrange(0, len(ranges)))
+    result = map(lambda rng: polarToCartesian(rng[0], laserRangeAngle(rng[1], numReadings)), ranges)
     return result
 
         
