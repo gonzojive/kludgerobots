@@ -16,6 +16,7 @@ import geometry_msgs
 import nav_msgs
 import laser
 import goal
+import gradients
 
 from sensor_msgs.msg import LaserScan
 
@@ -32,8 +33,8 @@ class Part2():
         # I have no idea what good error values are
         self._motionErr = motionModel.MotionErrorModel(0.1, 0.1, 0.1, 0.1, 0.1, 0.1)
         self.initialPose = pose.Pose(34.0, 46.0, 0.0)
-        #self._motionErr = None  # test only, assumes no error
-
+        self._gradients = None
+        self.cellSpacing = 0.5
 
     def robotPosition(self):
         return self._position
@@ -57,6 +58,10 @@ class Part2():
         self._pFilter.displayPoses()
         self._pFilter.start()   # threading function, calls our overloaded run() function and begins execution
         #self._pFilter.poseSet.printPoses()
+
+    def initGradients(self):
+        self._gradients = gradients.GradientField(self.cellSpacing, self.mapModel)
+        self._move.setGradientMap(self._gradients)
 
     def initSubscriptions(self):
         # subscribe to laser readings
@@ -99,6 +104,7 @@ class Part2():
         while not self.mapModel.initializedp():
             pass
 
+        self.initGradients()
         self.initFilter()
 
         # while we are not shutdown by the ROS, keep updating
