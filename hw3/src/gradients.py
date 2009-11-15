@@ -8,21 +8,17 @@ MAX_OBSTACLE_DISTANCE = 1.2
 #MapPoint is a structure to hold the gradient field values for all points in the map. gradient is the direction of the gradient at each (x,y) point. intrinsicVal is the distance to the nearest obstacle and goalVal is the distance to the goal
 class MapPoint:
     #initialize all values to -1 to show that they are not initialized/visited yet
-    def __init__(self, xPos, yPos):
-        self.x = xPos
-        self.y = yPos
+    def __init__(self, xIndex, yIndex):
+        self.x = xIndex
+        self.y = yIndex
         self.gradient = []
         self.intrinsicVal = 0
-        self.goalVal = 0
-    def setCost(newCost):
-        self.goalVal = newCost - self.intrinsicVal
-    def getCost():
-        return self.goalVal + self.intrinsicVal
+        self.cost = None
         
         
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
-    def __init__(self, xMapSize, yMapSize, goals, cellSpacing, distanceMap, laserReadings = None):
+    def __init__(self, xMapSize, yMapSize, cellSpacing, distanceMap, laserReadings = None):
         # constants for calculating the intrinsic (obstacle distance) cost
         self.robotRadius = ROBOT_RADIUS
         self.maximumDistance = MAX_OBSTACLE_DISTANCE
@@ -34,7 +30,6 @@ class GradientField:
         self.shallowSlope = (self.intrinsicChangeValue - self.intrinsicStartValue) / (self.changeDistance - self.robotRadius)
         self.steepSlope = (self.intrinsicEndValue - self.intrinsicChangeValue) / (self.maximumDistance - self.changeDistance)
         # data members
-        self.ActiveList = goals
         self.mapWidth = xMapSize
         self.mapHeight = yMapSize
         self.spacing = cellSpacing
@@ -42,7 +37,22 @@ class GradientField:
         self.gridHeight = self.mapHeight / cellSpacing
         self.gradientMap =  []
         self.initializeGradientMap(distanceMap)
+
+    def setGoals(self, goals):
+        for row in self.gradientMap:
+            for point in row:
+                point.cost = None
+        self.activeList = []
+        for g in goals:
+            cell = self.cellNearestXY(g.x, g.y)
+            cell.cost = 0
+            self.activeList.append(cell)
  
+    def cellNearestXY(self, x, y):
+        xIndex = int( float(x)/self.spacing + 0.5 )
+        yIndex = int( float(y)/self.spacing + 0.5 )
+        return self.gradientMap[xIndex][yIndex]
+
     def interpolateGradientAtXY(self, x, y):
         gridX = float(x)/self.spacing
         gridY = float(y)/self.spacing
@@ -67,8 +77,8 @@ class GradientField:
         for i in xrange(0, self.gridWidth):
             curY = 0.0
             for j in xrange(0, self.gridHeight):
-                mp = MapPoint(curX, curY)
-                mp.intrinsicVal = self.intrinsicFunc( distanceMap.distanceFromObstacleAtPoint([curX, curY]) )
+                mp = MapPoint(i, j)
+                mp.intrinsicVal = self.intrinsicFunc(distanceMap.distanceFromObstacleAtPoint([curX, curY]))
                 curCol.append( mp )
                 curY += self.spacing
             curX += self.spacing
@@ -91,8 +101,10 @@ class GradientField:
         else:
             return self.intrinsicEndValue
                     
-    #function to find and set the gradient value at a point (x,y) using the values at its neighbors
-    def propagateGoalValues(self):
-         #start from the goals on the active list, and propagate the values from there
+    # calculateCosts()
+    # assumes the active list has been set, and goal costs have been set to 0
+    def calculateCosts(self):
+         # start from the goals on the active list, and propagate the values from there
+         
          
        
