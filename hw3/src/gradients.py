@@ -15,15 +15,15 @@ class MapPoint:
         
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
-    def __init__(self,xMapSize,yMapSize,obstacleMap,laserReadings):
+    def __init__(self,xMapSize,yMapSize,goals,laserReadings):
         self.gradientMap =  MapPoint[xMapSize][yMapSize]
         self.ActiveList = []
+        for goal in goals:
+            self.ActiveList.append(goal)
     def getGradientAtXY(self,x,y):
         return self.gradientMap[x][y].gradient
         
-    def updateValuesAtXY(self,x,y,targetX,targetY):
-        #find distance from target
-        dist = abs(x-targetX) +abs(y-targetY)
+    def setObstacles(self):
         #find obstacle costs by loading the marshalled map into the matrix
         fname = sys.path[0] + '/../' + 'myGatesMapDist.marshal'
         try:
@@ -36,17 +36,19 @@ class GradientField:
             result = self.computeDistanceFromObstacleGrid()
             stream = file(fname, 'w')
             marshal.dump(result, stream)
+            sys.exit(-1)
+            
+        #now copy into the 2D Matrix
         rowNum =0
-        for columns =0:yMapSize
-            self.gradientMap[rowNum][column]
-        self.gradientMap[x][y].intrinsicVal = self.gradientMap[targetX][targetY].intrinsicVal*1/dist;
-        #change goal value as a function of Euclidean distance 
-        
+        for i =0:len(result):
+            if i % yMapSize == 0:
+                rowNum = rowNum +1
+                colNum =0
+            self.gradientMap[rowNum][colNum].intrinsicVal = result[rowNum +colNum]
+            colNum = colNum +1
+                    
     #function to find and set the gradient value at a point (x,y) using the values at its neighbors
-    def findGradientAtXY(self,x,y):
-        #check if the neighbor values are updated    
-        for xdash in -1:1:
-            for ydash in -1:1:
-                if self.gradientMap[xdash][ydash].gradient !=-1:
-                    #this value is updated. Update the value at (x,y) using this point now
-                    updateValuesAtXY(x,y,xdash,ydash)
+    def propagateGoalValues(self):
+         #start from the goals on the active list, and propagate the values from there
+         
+       
