@@ -1,5 +1,6 @@
 import rospy
 import mapmodel
+import imageutil
 
 ROBOT_RADIUS = 0.15
 DISTANCE_CHANGE_POINT = 1.0
@@ -88,6 +89,16 @@ class GradientField:
             self.gradientMap.append(curCol)
             curCol = []
             rospy.loginfo("%0.2f percent done", float(i)/float(self.gridWidth)*100.0)
+        vals = []
+        for c in self.gradientMap:
+            for d in c:
+                data = 0
+                if d.intrinsicCost > 100:
+                    data = 100
+                else:
+                    data = d.intrinsicCost
+                vals.append(data)
+        
 
     # intrinsicFunc()
     # convert distances into intrinsic values, using the Konolidge paper as a model

@@ -15,10 +15,9 @@ import util
 import statutil
 import sys
 
-def mapFloatIntoDiscretizedBucket(f, minFloat, maxFloat, numBuckets):
+def mapFloatIntoDiscretizedBucket(f, minFloat, denom, numBuckets):
     # f prefix float i discrete
-    fSizeOfBucket = float(maxFloat - minFloat) / float(numBuckets)
-    iBucket = int( float(f - minFloat) / fSizeOfBucket)
+    iBucket = int( float(f - minFloat) * denom)
     if iBucket < 0:
         return 0
     elif iBucket >= numBuckets:
@@ -36,6 +35,8 @@ class MapModel:
         self.xMin = 0.0
         self.yMin = 0.0
         self.yMin = 0.0
+        self.fSizeOfBucketDenomX = 0.0
+        self.fSizeOfBucketDenomY = 0.0
 
         # last time the robot position within the map was updated
         self.translationMapToOdom = None
@@ -122,16 +123,16 @@ class MapModel:
     def _annotateMapMetaData(self):
         meta = self.meta
 
-        # FIXME: account for the orientation of the map
         resolution = meta.resolution
         self.fHeight = resolution * float(meta.height)
         self.fWidth = resolution * float(meta.height)
         
         self.xMin = meta.origin.position.x
         self.xMax = self.xMin + self.fWidth
-        
         self.yMin = meta.origin.position.y
         self.yMax= self.yMin + self.fHeight
+        self.fSizeOfBucketDenomX = float(meta.width)/float(self.xMax-self.xMin)
+        self.fSizeOfBucketDenomY = float(meta.height)/float(self.yMax-self.yMin)
 
     def getDistanceFromObstacleGrid(self):
         result = None
@@ -325,8 +326,8 @@ class MapModel:
     # givena  point returns the distance to the nearest obstacle.  Operates in constant time
     def distanceFromObstacleAtPoint(self, pt):
         if self.initializedp():
-            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, self.meta.width)
-            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, self.meta.height)
+            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.meta.width)
+            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.meta.height)
             if not xDiscrete or not yDiscrete:
                 return 5.0
             # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
@@ -341,8 +342,8 @@ class MapModel:
     def probeAtPoint(self, pt):
         # here we the
         meta = self.meta
-        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.xMax, meta.width)
-        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.yMax, meta.height)
+        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.meta.width)
+        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.meta.height)
         # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
         probabilityOfOccupancy = ord(self.grid[yDiscrete * meta.width + xDiscrete])
