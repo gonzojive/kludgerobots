@@ -31,8 +31,8 @@ class GradientField:
         self.shallowSlope = (self.intrinsicChangeValue - self.intrinsicStartValue) / (self.changeDistance - self.robotRadius)
         self.steepSlope = (self.intrinsicEndValue - self.intrinsicChangeValue) / (self.maximumDistance - self.changeDistance)
         # data members
-        self.mapWidth = distanceMap.meta.width
-        self.mapHeight = distanceMap.meta.height
+        self.mapWidth = int(distanceMap.fWidth)
+        self.mapHeight = int(distanceMap.fHeight)
         self.spacing = cellSpacing
         self.gridWidth = int(self.mapWidth / cellSpacing)
         self.gridHeight = int(self.mapHeight / cellSpacing)
@@ -93,12 +93,12 @@ class GradientField:
         for c in self.gradientMap:
             for d in c:
                 data = 0
-                if d.intrinsicCost > 100:
-                    data = 100
+                if d.intrinsicVal > 100:
+                    data = 0
                 else:
-                    data = d.intrinsicCost
+                    data = 100 - d.intrinsicVal
                 vals.append(data)
-        
+        imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
 
     # intrinsicFunc()
     # convert distances into intrinsic values, using the Konolidge paper as a model

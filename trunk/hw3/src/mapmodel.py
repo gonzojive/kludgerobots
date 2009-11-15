@@ -125,7 +125,7 @@ class MapModel:
 
         resolution = meta.resolution
         self.fHeight = resolution * float(meta.height)
-        self.fWidth = resolution * float(meta.height)
+        self.fWidth = resolution * float(meta.width)
         
         self.xMin = meta.origin.position.x
         self.xMax = self.xMin + self.fWidth
