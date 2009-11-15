@@ -5,8 +5,8 @@ import roslib
 # contains x and y values
 class Goal:
     def __init__(self, goalX, goalY):
-        self.x = goalX
-        self.y = goalY
+        self.x = int(goalX)
+        self.y = int(goalY)
     def toStr(self):
         return "(" + str(self.x) + ", " + str(self.y) + ")"
 
@@ -17,6 +17,9 @@ class GoalSet:
     # no arguments
     def __init__(self):
         self.goals = []
+
+    def goalList(self):
+        return self.goals
 
     # newGoal()
     # takes in a new Goal object and appends it to the list

@@ -18,7 +18,7 @@ class MapPoint:
         
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
-    def __init__(self, xMapSize, yMapSize, cellSpacing, distanceMap, laserReadings = None):
+    def __init__(self, cellSpacing, distanceMap, laserReadings = None):
         # constants for calculating the intrinsic (obstacle distance) cost
         self.robotRadius = ROBOT_RADIUS
         self.maximumDistance = MAX_OBSTACLE_DISTANCE
@@ -30,11 +30,11 @@ class GradientField:
         self.shallowSlope = (self.intrinsicChangeValue - self.intrinsicStartValue) / (self.changeDistance - self.robotRadius)
         self.steepSlope = (self.intrinsicEndValue - self.intrinsicChangeValue) / (self.maximumDistance - self.changeDistance)
         # data members
-        self.mapWidth = xMapSize
-        self.mapHeight = yMapSize
+        self.mapWidth = distanceMap.meta.width
+        self.mapHeight = distanceMap.meta.height
         self.spacing = cellSpacing
-        self.gridWidth = self.mapWidth / cellSpacing
-        self.gridHeight = self.mapHeight / cellSpacing
+        self.gridWidth = int(self.mapWidth / cellSpacing)
+        self.gridHeight = int(self.mapHeight / cellSpacing)
         self.gradientMap =  []
         self.initializeGradientMap(distanceMap)
 
@@ -65,7 +65,7 @@ class GradientField:
         north = [nw[0] + alphaX * (ne[0]-nw[0]), nw[1] + alphaX * (ne[1]-nw[1])]
         south = [sw[0] + alphaX * (se[0]-sw[0]), sw[1] + alphaX * (se[1]-sw[1])]
         gradient = [south[0] + alphaY * (north[0]-south[0]), south[1] + alphaY * (north[1]-south[1])]
-        return self.gradientMap[x][y].gradient
+        return gradient
 
     # initializeGradientMap()
     # initialize all the MapPoints using the pre-computed obstacle distance map
@@ -78,12 +78,16 @@ class GradientField:
             curY = 0.0
             for j in xrange(0, self.gridHeight):
                 mp = MapPoint(i, j)
-                mp.intrinsicVal = self.intrinsicFunc(distanceMap.distanceFromObstacleAtPoint([curX, curY]))
+                if distanceMap.pointInBounds([curX, curY]):
+                    mp.intrinsicVal = self.intrinsicFunc(distanceMap.distanceFromObstacleAtPoint([curX, curY]))
+                else:
+                    mp.intrinsicVal = self.intrinsicMaxValue
                 curCol.append( mp )
                 curY += self.spacing
             curX += self.spacing
             self.gradientMap.append(curCol)
             curCol = []
+            rospy.loginfo("%0.2f percent done", float(i)/float(self.gridWidth)*100.0)
 
     # intrinsicFunc()
     # convert distances into intrinsic values, using the Konolidge paper as a model
@@ -105,6 +109,6 @@ class GradientField:
     # assumes the active list has been set, and goal costs have been set to 0
     def calculateCosts(self):
          # start from the goals on the active list, and propagate the values from there
-         
-         
-       
+         pass
+
+
