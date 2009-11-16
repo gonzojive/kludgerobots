@@ -5,6 +5,7 @@ import imageutil
 import vector
 from vector import *
 import viz
+from numpy import allclose
 
 ROBOT_RADIUS = 0.15
 DISTANCE_CHANGE_POINT = 1.0
@@ -13,6 +14,7 @@ MAX_INTRINSIC = 10000.0
 START_INTRINSIC = 100.0
 MID_INTRINSIC = 50.0
 END_INTRINSIC = 1.0
+STEP_SIZE = .1
 
 #MapPoint is a structure to hold the gradient field values for all points in the map. gradient is the direction of the gradient at each (x,y) point. intrinsicVal is the distance to the nearest obstacle and goalVal is the distance to the goal
 class MapPoint:
@@ -53,7 +55,7 @@ class GradientField:
         self.initializeGradientMap(distanceMap)
         self.startPosition = initialPose
         self.foundStartPosition = False
-        self.stepSize = 0.01 #1 cm step size for now
+        self.stepSize = STEP_SIZE #1 cm step size for now
         self.goals = []
 
         #goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
@@ -70,6 +72,7 @@ class GradientField:
         for row in self.gradientMap:
             for point in row:
                 point.cost = None
+                point.gradient = []
         self.activeList = []
         for g in goals:
             rospy.loginfo("goal is (%f,%f)",g.x,g.y)
@@ -146,7 +149,7 @@ class GradientField:
         self.calculateGradients()
         def absVectorAtCell(cell):
             grad = cell.gradient
-            rospy.loginfo("cell gradient: (%.2f, %.2f) of len %f", grad[0], grad[1], vector_length(grad))
+            #rospy.loginfo("cell gradient: (%.2f, %.2f) of len %f", grad[0], grad[1], vector_length(grad))
             #grad = vector_normalize(grad)
             grad = vector_scale(vector_normalize(grad), self.spacing)
             origin = [cell.x, cell.y]
@@ -159,8 +162,6 @@ class GradientField:
                     if cell.gradient and vector_length_squared(cell.gradient) > .0001:
                         yield cell
 
-        v.vizArrows([ ([0,0], [1,1]),
-                      ([1,1], [2,-1]) ] )
         v.vizArrows([absVectorAtCell(cell) for cell in allCells()])
 
 
@@ -221,6 +222,7 @@ class GradientField:
 
 
     def calculateGradients(self):
+        rospy.loginfo("computing all gradients!")
         for col in self.gradientMap:
             for cell in col:
                 if not cell.cost:
@@ -231,22 +233,27 @@ class GradientField:
                 W = self.cellIsValid(cell.xInd-1, cell.yInd)
                 grad = [0, 0]
                 # Testing - remove before final
-                if (E == None and W == None) or (N == None and S == None):
-                    rospy.loginfo("Error! No gradient to calculate")
-                    continue
-                if E == None:
+                if E == None and W == None:
+                    grad[0] = 0
+                elif E == None:
                     grad[0] = W.cost - cell.cost
                 elif W == None:
                     grad[0] = cell.cost - E.cost
                 else:
                     grad[0] = W.cost - E.cost
-                if N == None:
+                if N == None and S == None:
+                    grad[1] = 0
+                elif N == None:
                     grad[1] = S.cost - cell.cost
                 elif S == None:
                     grad[1] = cell.cost - N.cost
                 else:
                     grad[1] = S.cost - N.cost
+                
+                if (vector_length_squared(grad) > .0001):
+                    grad = vector_normalize(grad)
                 cell.gradient = grad
+        rospy.loginfo("computed all gradients!")
 
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
@@ -351,13 +358,21 @@ class GradientField:
          rospy.loginfo("costs calculated")
        
 
-    def findPathGivenGradient(goalPosition):
+    def findPathGivenGradient(self, goalPosition, v):
         path =[]
-        currPos = self.startPosition
-        goal = goals.index(goalPosition)
-        while not (currPos.x == goal.x and currPos.y == goal.y):
-            curr_pos = vector_add(currPos,self.stepSize * interpolateGradientAtXY(currPos.x,currPos.y))
-            path.append(curr_pos)
+        currPos = [self.startPosition.x, self.startPosition.y]
+        goal = self.goals[goalPosition]
+        rospy.loginfo("Finding path to goal from %0.2f,%0.2f => %0.2f,%0.2f", 
+                       currPos[0], currPos[1], goal.x, goal.y)
+        maxPath = 200
+        while len(path) < maxPath and (
+              not (allclose(currPos[0], goal.x) and allclose(currPos[1], goal.y))):
+            interpedGrad = self.interpolateGradientAtXY(currPos[0],currPos[1])
+            rospy.loginfo("path gradient: (%.2f, %.2f) of len %f", interpedGrad[0], interpedGrad[1], vector_length(interpedGrad))
+            currPos = vector_add(currPos,
+                                  vector_scale(interpedGrad, self.stepSize))
+            path.append(currPos)
         rospy.loginfo("found goal. path is:")
+        v.vizConnectedPoints(path, color=[0,0,1])
         for p in path:
-            rospy.loginfo("%0.2f,%0.2f,%0.2f",p.x,p.y,p.theta)
+            rospy.loginfo("%0.2f,%0.2f",p[0],p[1])
