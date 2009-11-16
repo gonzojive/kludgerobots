@@ -94,6 +94,12 @@ class Visualizer:
                              [vector3d(start), vector3d(end)])        
         self.pub.publish(marker)
 
+    def vizConnectedPoints(self, points, name=None, color=None):
+        marker = self.makeMarker(markerType=Marker.LINE_STRIP, name=name, color=color)
+        marker.points = map (lambda pt : Point(x = pt[0], y = pt[1], z = pt[2]),
+                             [vector3d(pt) for pt in points])        
+        self.pub.publish(marker)
+
     def vizPoints(self, points, name=None, color=None):
         marker = self.makeMarker(markerType=Marker.POINTS, name=name, color=color)
         marker.points = map (lambda pt : Point(x = pt[0], y = pt[1], z = pt[2]),

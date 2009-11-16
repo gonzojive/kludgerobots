@@ -24,7 +24,11 @@ class MoveFromKeyboard:
     def publishNextMovement(self):
         text = self.keyboardInput()
         if text:
-            self.parseText(text)
+            try:
+                self.parseText(text)
+            except:
+                rospy.loginfo("Error with syntax!!!!")
+                raise
         if self.command:
             self.velPublish.publish(Twist(Vector3(self.command[0],0,0),Vector3(0,0,self.command[1])))
             if self.repeatCommand == 0:
@@ -80,7 +84,7 @@ class MoveFromKeyboard:
                 self.gradient.displayGradient(self.viz)
 
         elif cmd[0] == "showPath":
-            self.gradient.findPathGivenGradient(int(cmd[2]))
+            self.gradient.findPathGivenGradient(int(cmd[1]), self.viz)
         else:
             rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[0], cmd[1])
             self.command = [float(cmd[0]), float(cmd[1])]
