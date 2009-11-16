@@ -66,6 +66,8 @@ def smallestAngleDifference(a1, a2):
     d2 = normalizeAngle360(a2 - a1)
     return min(d1, d2)
 
-
+def close(a, b, maxDist = 0.01):
+    absDiff = [abs(v[1]-v[0]) for v in zip(a, b)]
+    return len(filter(lambda x: x > maxDist, absDiff)) == 0
     
     
