@@ -168,10 +168,10 @@ class GradientField:
 
     def cellIsValid(self, i, j):
         if i < 0 or i >= self.gridWidth or j < 0 or j >= self.gridHeight:
-            return False
+            return None
         cell = self.gradientMap[i][j]
-        if cell.cost = None:
-            return False
+        if cell.cost == None:
+            return None
         return cell
         
     # calculateCosts()
@@ -204,59 +204,53 @@ class GradientField:
                         if S != None:
                             # Case 1: Both are valid - find the minimum
                             if N.cost < S.cost:
-                                NS = N.cost
+                                NS = N
                             else:
-                                NS = S.cost          
+                                NS = S          
                         else:
                             # Case 2: N is valid, S is not - take N
-                            NS = N.cost
+                            NS = N
                     else:
                         if S != None:
                             # Case 3: S is valid, N is not - take S
-                            NS = S.cost
+                            NS = S
                     # East-West comparison
                     if E != None:
                         if W != None:
                             # Case 1: Both are valid - find the minimum
                             if E.cost < W.cost:
-                                EW = E.cost
+                                EW = E
                             else:
-                                EW = W.cost          
+                                EW = W         
                         else:
                             # Case 2: E is valid, W is not - take E
-                            EW = E.cost
+                            EW = E
                     else:
                         if W != None:
                             # Case 3: W is valid, E is not - take W
-                            EW = W.cost
+                            EW = W
 
                     # Calculate the correct theta, based on NS and EW
-                    if NS:
-                        if EW:
-                            theta = math.atan2(float(NS)/float(EW))
+                    if NS != None:
+                        if EW != None:
+                            theta = math.atan2(float(NS.cost)/float(EW.cost))
+                            if NS.cost < EW.cost:
+                                minPoint = NS
+                            else:
+                                minPoint = EW
                         else:
                             theta = 0
+                            minPoint = NS
                     else:
-                        if EW:
+                        if EW != None:
                             theta = math.pi
+                            minPoint = EW
                         else:
                             rospy.loginfo("Error! Grid [%d][%d] at [%0.2f, %0.2f] has NO valid neighbors", n.xInd, n.yInd, n.x, n.y)
+                            continue
 
-
-                    #see which point to rotate around
-                    if NS < EW:
-                        #find if N or S is minimum
-                        if self.gradientMap[n.x][n.y+1].cost <= self.gradientMap[n.x][n.y-1].cost:
-                            minPoint = self.gradientMap[n.x][n.y+1]
-                        else:
-                            minPoint = self.gradientMap[n.x][n.y-1]
-                    else: #E or W
-                        if self.gradientMap[n.x+1][n.y].cost <= self.gradientMap[n.x-1][n.y].cost:
-                            minPoint  = self.gradientMap[n.x+1][n.y]
-                        else:
-                            minPoint =  self.gradientMap[n.x-1][n.y]
                     #find the equation of the line
-                    m = NS/EW #slope of line
+                    m = NS.cost/EW.cost #slope of line
                     c = minPoint.y - m*minPoint.x #intercept
                     #eqn should be of the form ax+by+c =0, so change the signs of the co-efficients accordingly
                     #find distance of n from this wavefront line
