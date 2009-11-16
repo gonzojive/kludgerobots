@@ -57,7 +57,8 @@ class MoveFromKeyboard:
                 self.gradient.setGoals(self.goals.goalList())
                 if len(cmd) >= 2:
                     self.gradient.calculateCosts(int(cmd[1]))
-                self.gradient.calculateCosts()
+                else:
+                    self.gradient.calculateCosts()
         elif cmd[0] == "display":
             if cmd[1] == "intrinsic":
                 self.gradient.displayImageOfIntrinsics()

@@ -100,3 +100,9 @@ def vector_rotate_2d(v, theta_about_z):
     [x, y] = v
     return [x * math.cos(theta) - y * math.sin(theta), x * math.sin(theta) + y * math.cos(theta)]
 
+def lineDistanceToPoint(pt, line_origin, line_trajectory):
+    w = vector_minus(pt, line_origin)
+    traj_cross_w = cross(line_trajectory, w)
+    return vector_length(traj_cross_w) / vector_length(line_trajectory)
+
+
