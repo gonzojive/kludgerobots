@@ -95,8 +95,8 @@ class GradientField:
         se = self.gradientMap[int(gridX+1)][int(gridY)].gradient
         nw = self.gradientMap[int(gridX)][int(gridY+1)].gradient
         ne = self.gradientMap[int(gridX+1)][int(gridY+1)].gradient
-        alphaX = float(gridX - int(gridX))/self.spacing
-        alphaY = float(gridY - int(gridY))/self.spacing
+        alphaX = float(gridX - int(gridX))
+        alphaY = float(gridY - int(gridY))
         north = [nw[0] + alphaX * (ne[0]-nw[0]), nw[1] + alphaX * (ne[1]-nw[1])]
         south = [sw[0] + alphaX * (se[0]-sw[0]), sw[1] + alphaX * (se[1]-sw[1])]
         gradient = [south[0] + alphaY * (north[0]-south[0]), south[1] + alphaY * (north[1]-south[1])]
@@ -109,7 +109,7 @@ class GradientField:
         rowNum =0
         curCol = []
         curX = 0.0
-        tenPercent = self.gridWidth / 10
+        tenPercent = float(self.gridWidth) / 10.0
         nextPrint = tenPercent
         curPercent = 10
         for i in xrange(0, self.gridWidth):
@@ -148,10 +148,7 @@ class GradientField:
     def displayGradient(self, v):
         self.calculateGradients()
         def absVectorAtCell(cell):
-            grad = cell.gradient
-            #rospy.loginfo("cell gradient: (%.2f, %.2f) of len %f", grad[0], grad[1], vector_length(grad))
-            #grad = vector_normalize(grad)
-            grad = vector_scale(vector_normalize(grad), self.spacing)
+            grad = vector_scale(cell.gradient, self.spacing)
             origin = [cell.x, cell.y]
             absVector = ( origin, vector_add(origin, grad))
             return absVector
@@ -159,7 +156,7 @@ class GradientField:
         def allCells():
             for col in self.gradientMap:
                 for cell in col:
-                    if cell.gradient and vector_length_squared(cell.gradient) > .0001:
+                    if cell.gradient:
                         yield cell
 
         v.vizArrows([absVectorAtCell(cell) for cell in allCells()])
@@ -341,13 +338,13 @@ class GradientField:
                             temp.append(n)
                             if n == self.startCell:
                                 self.foundStartPosition = True
-                                rospy.loginfo("Updated starting point cost to %0.2f", n.cost)
+                                rospy.loginfo("Updated starting point cost to %f", n.cost)
                     else:
                         n.cost = newCost
                         temp.append(n)
                         if n == self.startCell:
                             self.foundStartPosition = True
-                            rospy.loginfo("Updated starting point cost to %0.2f", n.cost)
+                            rospy.loginfo("Updated starting point cost to %f", n.cost)
                 #end for
             #end while
             #add the temp list to the active list, since the values for all the entries in temp have been updated
