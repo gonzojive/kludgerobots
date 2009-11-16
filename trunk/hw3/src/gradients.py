@@ -14,9 +14,11 @@ END_INTRINSIC = 1.0
 
 #MapPoint is a structure to hold the gradient field values for all points in the map. gradient is the direction of the gradient at each (x,y) point. intrinsicVal is the distance to the nearest obstacle and goalVal is the distance to the goal
 class MapPoint:
-    def __init__(self, xIndex, yIndex):
-        self.x = xIndex
-        self.y = yIndex
+    def __init__(self, xIndex, yIndex, xPos, yPos):
+        self.xInd = xIndex
+        self.yInd = yIndex
+        self.x = xPos
+        self.y = yPos
         self.gradient = []
         self.intrinsicVal = 1
         self.cost = None
@@ -89,7 +91,7 @@ class GradientField:
         for i in xrange(0, self.gridWidth):
             curY = 0.0
             for j in xrange(0, self.gridHeight):
-                mp = MapPoint(i, j)
+                mp = MapPoint(i, j, curX, curY)
                 if distanceMap.pointInBounds([curX, curY]):
                     mp.intrinsicVal = self.intrinsicFunc(distanceMap.distanceFromObstacleAtPoint([curX, curY]))
                 else:
@@ -152,8 +154,8 @@ class GradientField:
     #function to find the 4 nearest neighbors
     def findNeighbors(self,point):
         neighbors = []
-        x = point.x
-        y = point.y
+        x = point.xInd
+        y = point.yInd
         if x > 0:
             neighbors.append(self.gradientMap[x-1][y])
         if x < self.gridWidth-1:
@@ -163,6 +165,14 @@ class GradientField:
         if y < self.gridHeight-1:
             neighbors.append(self.gradientMap[x][y+1])
         return neighbors
+
+    def cellIsValid(self, i, j):
+        if i < 0 or i >= self.gridWidth or j < 0 or j >= self.gridHeight:
+            return False
+        cell = self.gradientMap[i][j]
+        if cell.cost = None:
+            return False
+        return cell
         
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
@@ -182,11 +192,57 @@ class GradientField:
                 #Now we have to find the minimum neighbors along N-S and E-W for each of these neighbors
                 for n in neighbors:
                     #find the minimum
-                    NS = min(self.gradientMap[n.x][n.y+1].cost, self.gradientMap[n.x][n.y-1].cost)
-                    EW = min(self.gradientMap[n.x+1][n.y].cost, self.gradientMap[n.x-1][n.y].cost)
-                    
-                    theta = math.atan2(float(NS)/float(EW))
-                    
+                    N = self.cellIsValid(n.xInd, n.yInd+1)
+                    S = self.cellIsValid(n.xInd, n.yInd-1)
+                    E = self.cellIsValid(n.xInd+1, n.yInd)
+                    W = self.cellIsValid(n.xInd-1, n.yInd)
+                    NS = None
+                    EW = None
+                    minPoint = None
+                    # North-South comparison
+                    if N != None:
+                        if S != None:
+                            # Case 1: Both are valid - find the minimum
+                            if N.cost < S.cost:
+                                NS = N.cost
+                            else:
+                                NS = S.cost          
+                        else:
+                            # Case 2: N is valid, S is not - take N
+                            NS = N.cost
+                    else:
+                        if S != None:
+                            # Case 3: S is valid, N is not - take S
+                            NS = S.cost
+                    # East-West comparison
+                    if E != None:
+                        if W != None:
+                            # Case 1: Both are valid - find the minimum
+                            if E.cost < W.cost:
+                                EW = E.cost
+                            else:
+                                EW = W.cost          
+                        else:
+                            # Case 2: E is valid, W is not - take E
+                            EW = E.cost
+                    else:
+                        if W != None:
+                            # Case 3: W is valid, E is not - take W
+                            EW = W.cost
+
+                    # Calculate the correct theta, based on NS and EW
+                    if NS:
+                        if EW:
+                            theta = math.atan2(float(NS)/float(EW))
+                        else:
+                            theta = 0
+                    else:
+                        if EW:
+                            theta = math.pi
+                        else:
+                            rospy.loginfo("Error! Grid [%d][%d] at [%0.2f, %0.2f] has NO valid neighbors", n.xInd, n.yInd, n.x, n.y)
+
+
                     #see which point to rotate around
                     if NS < EW:
                         #find if N or S is minimum
