@@ -11,7 +11,10 @@ import matplotlib.mlab as mlab
 def showImageRowCol(data, width, height):
     im = PIL.Image.new('L', (width,height))  # 'P' for palettized
     maxData = max(data)
-    dataScaled = [int(float(d) / float(maxData) * 255.0) for d in data]
+    if maxData > 0:
+        dataScaled = [int(float(d) / float(maxData) * 255.0) for d in data]
+    else:
+        dataScaled = [0] * len(data)
     im.putdata(dataScaled)
     im.show()
 

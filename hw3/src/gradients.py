@@ -7,21 +7,19 @@ import imageutil
 ROBOT_RADIUS = 0.15
 DISTANCE_CHANGE_POINT = 1.0
 MAX_OBSTACLE_DISTANCE = 1.2
+MAX_INTRINSIC = 10000.0
+START_INTRINSIC = 100.0
+MID_INTRINSIC = 50.0
+END_INTRINSIC = 1.0
 
 #MapPoint is a structure to hold the gradient field values for all points in the map. gradient is the direction of the gradient at each (x,y) point. intrinsicVal is the distance to the nearest obstacle and goalVal is the distance to the goal
 class MapPoint:
- 
     def __init__(self, xIndex, yIndex):
         self.x = xIndex
         self.y = yIndex
         self.gradient = []
-        self.intrinsicVal = 0
+        self.intrinsicVal = 1
         self.cost = None
-        
-class Goals:
-    def __init__(self,x,y):
-        self.x = x;
-        self.y = y;
         
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
@@ -30,25 +28,24 @@ class GradientField:
         self.robotRadius = ROBOT_RADIUS
         self.maximumDistance = MAX_OBSTACLE_DISTANCE
         self.changeDistance = DISTANCE_CHANGE_POINT
-        self.intrinsicMaxValue = 10000.0
-        self.intrinsicStartValue = 100.0
-        self.intrinsicChangeValue = 50.0
-        self.intrinsicEndValue = 1.0
+        self.intrinsicMaxValue = MAX_INTRINSIC
+        self.intrinsicStartValue = START_INTRINSIC
+        self.intrinsicChangeValue = MID_INTRINSIC
+        self.intrinsicEndValue = END_INTRINSIC
         self.shallowSlope = (self.intrinsicChangeValue - self.intrinsicStartValue) / (self.changeDistance - self.robotRadius)
         self.steepSlope = (self.intrinsicEndValue - self.intrinsicChangeValue) / (self.maximumDistance - self.changeDistance)
         # data members
-        self.mapWidth = distanceMap.meta.width
-        self.mapHeight = distanceMap.meta.height
+        self.mapWidth = int(distanceMap.fWidth)
+        self.mapHeight = int(distanceMap.fHeight)
         self.spacing = cellSpacing
         self.gridWidth = int(self.mapWidth / cellSpacing)
         self.gridHeight = int(self.mapHeight / cellSpacing)
         self.gradientMap =  []
         self.initializeGradientMap(distanceMap)
-        goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
-        self.setGoals(goals)
-        
-        rospy.loginfo("done with intrinsic costs.Starting LPN algo")
-        self.calculateCosts()
+        #rospy.loginfo("done with intrinsic costs.Starting LPN algo")
+        #goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
+        #self.setGoals(goals)
+        #self.calculateCosts()
 
     def setGoals(self, goals):        
         for row in self.gradientMap:
@@ -56,7 +53,6 @@ class GradientField:
                 point.cost = None
         self.activeList = []
         for g in goals:
-            rospy.loginfo("goal is (%f,%f)",g.x,g.y)
             cell = self.cellNearestXY(g.x, g.y)
             cell.cost = 0
             self.activeList.append(cell)
@@ -87,6 +83,9 @@ class GradientField:
         rowNum =0
         curCol = []
         curX = 0.0
+        tenPercent = self.gridWidth / 10
+        nextPrint = tenPercent
+        curPercent = 10
         for i in xrange(0, self.gridWidth):
             curY = 0.0
             for j in xrange(0, self.gridHeight):
@@ -100,16 +99,38 @@ class GradientField:
             curX += self.spacing
             self.gradientMap.append(curCol)
             curCol = []
-            rospy.loginfo("%0.2f percent done", float(i)/float(self.gridWidth)*100.0)
+            if i > nextPrint:
+                rospy.loginfo("%d%% complete", curPercent)
+                curPercent += 10
+                nextPrint += tenPercent
+        rospy.loginfo("100% complete")
+
+
+    def displayImageOfCosts(self):
+        vals = []
+        for c in self.gradientMap:
+            for d in c:
+                data = 0
+                if not d.cost or d.cost > 100:
+                    data = 0
+                else:
+                    data = 100 - d.intrinsicVal
+                vals.append(data)
+        imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
+
+
+    def displayImageOfIntrinsics(self):
         vals = []
         for c in self.gradientMap:
             for d in c:
                 data = 0
                 if d.intrinsicVal > 100:
-                    data = 100
+                    data = 0
                 else:
-                    data = d.intrinsicVal
+                    data = 100 - d.intrinsicVal
                 vals.append(data)
+        imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
+
         
 
     # intrinsicFunc()
@@ -128,29 +149,34 @@ class GradientField:
         else:
             return self.intrinsicEndValue
     
-    #function to find the 8 nearest neighbors
+    #function to find the 4 nearest neighbors
     def findNeighbors(self,point):
         neighbors = []
-        for x in range(point.x-1,point.x+1):
-            for y in range(point.y-1,point.y+1):
-                if x > self.MapWidth or y > self.MapHeight: #don't add the point as a neighbor if it's out of bounds
-                    continue
-                neighbors.append(self.gradientMap[x][y])
+        x = point.x
+        y = point.y
+        if x > 0:
+            neighbors.append(self.gradientMap[x-1][y])
+        if x < self.gridWidth-1:
+            neighbors.append(self.gradientMap[x+1][y])
+        if y > 0:
+            neighbors.append(self.gradientMap[x][y-1])
+        if y < self.gridHeight-1:
+            neighbors.append(self.gradientMap[x][y+1])
         return neighbors
         
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
     #uses LPN algorithm, as in paper
-    def calculateCosts(self):
+    def calculateCosts(self, iterations = 70):
          # start from the goals on the active list, and propagate the values from there
-         numIterations =70 #each iteration increases the exploration depth by 1
+         numIterations = iterations #each iteration increases the exploration depth by 1
          temp =[]
          for i in range(numIterations):
             while self.activeList:
                 currentPoint = self.activeList.pop() #currentPoint is the point whose value we know, and which will be used to propagate values
                 
                 #calculate the neighbors of the point
-                neighbors = findNeighbors(currentPoint)
+                neighbors = self.findNeighbors(currentPoint)
                 
                 #neighbors stores the neighbors of the point. 
                 #Now we have to find the minimum neighbors along N-S and E-W for each of these neighbors
