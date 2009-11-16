@@ -1,6 +1,8 @@
 import rospy
 import mapmodel
+import math
 import imageutil
+
 
 ROBOT_RADIUS = 0.15
 DISTANCE_CHANGE_POINT = 1.0
@@ -8,7 +10,7 @@ MAX_OBSTACLE_DISTANCE = 1.2
 
 #MapPoint is a structure to hold the gradient field values for all points in the map. gradient is the direction of the gradient at each (x,y) point. intrinsicVal is the distance to the nearest obstacle and goalVal is the distance to the goal
 class MapPoint:
-    #initialize all values to -1 to show that they are not initialized/visited yet
+ 
     def __init__(self, xIndex, yIndex):
         self.x = xIndex
         self.y = yIndex
@@ -16,6 +18,10 @@ class MapPoint:
         self.intrinsicVal = 0
         self.cost = None
         
+class Goals:
+    def __init__(self,x,y):
+        self.x = x;
+        self.y = y;
         
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
@@ -31,20 +37,26 @@ class GradientField:
         self.shallowSlope = (self.intrinsicChangeValue - self.intrinsicStartValue) / (self.changeDistance - self.robotRadius)
         self.steepSlope = (self.intrinsicEndValue - self.intrinsicChangeValue) / (self.maximumDistance - self.changeDistance)
         # data members
-        self.mapWidth = int(distanceMap.fWidth)
-        self.mapHeight = int(distanceMap.fHeight)
+        self.mapWidth = distanceMap.meta.width
+        self.mapHeight = distanceMap.meta.height
         self.spacing = cellSpacing
         self.gridWidth = int(self.mapWidth / cellSpacing)
         self.gridHeight = int(self.mapHeight / cellSpacing)
         self.gradientMap =  []
         self.initializeGradientMap(distanceMap)
+        goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
+        self.setGoals(goals)
+        
+        rospy.loginfo("done with intrinsic costs.Starting LPN algo")
+        self.calculateCosts()
 
-    def setGoals(self, goals):
+    def setGoals(self, goals):        
         for row in self.gradientMap:
             for point in row:
                 point.cost = None
         self.activeList = []
         for g in goals:
+            rospy.loginfo("goal is (%f,%f)",g.x,g.y)
             cell = self.cellNearestXY(g.x, g.y)
             cell.cost = 0
             self.activeList.append(cell)
@@ -94,11 +106,11 @@ class GradientField:
             for d in c:
                 data = 0
                 if d.intrinsicVal > 100:
-                    data = 0
+                    data = 100
                 else:
-                    data = 100 - d.intrinsicVal
+                    data = d.intrinsicVal
                 vals.append(data)
-        imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
+        
 
     # intrinsicFunc()
     # convert distances into intrinsic values, using the Konolidge paper as a model
@@ -115,11 +127,76 @@ class GradientField:
             return self.intrinsicChangeValue + (self.steepSlope * (distance - self.changeDistance))
         else:
             return self.intrinsicEndValue
-                    
+    
+    #function to find the 8 nearest neighbors
+    def findNeighbors(self,point):
+        neighbors = []
+        for x in range(point.x-1,point.x+1):
+            for y in range(point.y-1,point.y+1):
+                if x > self.MapWidth or y > self.MapHeight: #don't add the point as a neighbor if it's out of bounds
+                    continue
+                neighbors.append(self.gradientMap[x][y])
+        return neighbors
+        
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
+    #uses LPN algorithm, as in paper
     def calculateCosts(self):
          # start from the goals on the active list, and propagate the values from there
-         pass
+         numIterations =70 #each iteration increases the exploration depth by 1
+         temp =[]
+         for i in range(numIterations):
+            while self.activeList:
+                currentPoint = self.activeList.pop() #currentPoint is the point whose value we know, and which will be used to propagate values
+                
+                #calculate the neighbors of the point
+                neighbors = findNeighbors(currentPoint)
+                
+                #neighbors stores the neighbors of the point. 
+                #Now we have to find the minimum neighbors along N-S and E-W for each of these neighbors
+                for n in neighbors:
+                    #find the minimum
+                    NS = min(self.gradientMap[n.x][n.y+1].cost, self.gradientMap[n.x][n.y-1].cost)
+                    EW = min(self.gradientMap[n.x+1][n.y].cost, self.gradientMap[n.x-1][n.y].cost)
+                    
+                    theta = math.atan2(float(NS)/float(EW))
+                    
+                    #see which point to rotate around
+                    if NS < EW:
+                        #find if N or S is minimum
+                        if self.gradientMap[n.x][n.y+1].cost <= self.gradientMap[n.x][n.y-1].cost:
+                            minPoint = self.gradientMap[n.x][n.y+1]
+                        else:
+                            minPoint = self.gradientMap[n.x][n.y-1]
+                    else: #E or W
+                        if self.gradientMap[n.x+1][n.y].cost <= self.gradientMap[n.x-1][n.y].cost:
+                            minPoint  = self.gradientMap[n.x+1][n.y]
+                        else:
+                            minPoint =  self.gradientMap[n.x-1][n.y]
+                    #find the equation of the line
+                    m = NS/EW #slope of line
+                    c = minPoint.y - m*minPoint.x #intercept
+                    #eqn should be of the form ax+by+c =0, so change the signs of the co-efficients accordingly
+                    #find distance of n from this wavefront line
+                    dist = abs(n.y - m*n.x - c)/math.sqrt(1+m*m)
+                    #update cost
+                    newCost = point.cost + dist*n.intrinsicVal
+                    if n.cost:
+                        if newCost < n.cost:
+                            n.cost = newCost
+                            temp.append(n)
+                    else:
+                        n.cost = newCost
+                        temp.append(n)
+                #end for
+            #end while
+            #add the temp list to the active list, since the values for all the entries in temp have been updated
+            self.activeList.extend(temp)
+            temp =[]
+            rospy.loginfo("iteration %d done",i)
+         #end iterations
+         rospy.loginfo("costs calculated")
+         
+       
 
 
