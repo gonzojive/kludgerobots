@@ -30,7 +30,7 @@ class Goals:
         self.y = y;
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
-    def __init__(self, cellSpacing, distanceMap, laserReadings = None):
+    def __init__(self, cellSpacing, distanceMap, initialPose = None, laserReadings = None):
         # constants for calculating the intrinsic (obstacle distance) cost
         self.robotRadius = ROBOT_RADIUS
         self.maximumDistance = MAX_OBSTACLE_DISTANCE
@@ -49,6 +49,8 @@ class GradientField:
         self.gridHeight = int(self.mapHeight / cellSpacing)
         self.gradientMap =  []
         self.initializeGradientMap(distanceMap)
+        self.startPosition = initialPose
+        self.foundStartPosition = False
 
         #goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
         #self.setGoals(goals)
@@ -57,7 +59,10 @@ class GradientField:
         #self.calculateCosts()
 
 
-    def setGoals(self, goals):        
+    def setGoals(self, goals):
+        if not self.startPosition:
+            rospy.loginfo("Can't set goals without a valid start position")
+            return
         for row in self.gradientMap:
             for point in row:
                 point.cost = None
@@ -67,6 +72,8 @@ class GradientField:
             cell = self.cellNearestXY(g.x, g.y)
             cell.cost = 0
             self.activeList.append(cell)
+        self.startCell = self.cellNearestXY(self.startPosition.x, self.startPosition.y)
+        self.foundStartPosition = False
  
     def cellNearestXY(self, x, y):
         xIndex = int( float(x)/self.spacing + 0.5 )
@@ -298,9 +305,15 @@ class GradientField:
                         if newCost < n.cost:
                             n.cost = newCost
                             temp.append(n)
+                            if n == self.startCell:
+                                self.foundStartPosition = True
+                                rospy.loginfo("Updated starting point cost to %0.2f", n.cost)
                     else:
                         n.cost = newCost
                         temp.append(n)
+                        if n == self.startCell:
+                            self.foundStartPosition = True
+                            rospy.loginfo("Updated starting point cost to %0.2f", n.cost)
                 #end for
             #end while
             #add the temp list to the active list, since the values for all the entries in temp have been updated

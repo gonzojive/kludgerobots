@@ -60,7 +60,7 @@ class Part2():
         #self._pFilter.poseSet.printPoses()
 
     def initGradients(self):
-        self._gradients = gradients.GradientField(self.cellSpacing, self.mapModel)
+        self._gradients = gradients.GradientField(self.cellSpacing, self.mapModel, self.initialPose)
         self._move.setGradientMap(self._gradients)
 
     def initSubscriptions(self):
