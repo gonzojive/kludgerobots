@@ -5,7 +5,7 @@ import random
 import math
 
 #ros
-import roslib; roslib.load_manifest('hw2')
+import roslib; roslib.load_manifest('hw3')
 import rospy
 #import tf
 import nav_msgs
