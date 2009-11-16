@@ -1,3 +1,4 @@
+import roslib; roslib.load_manifest('hw3')
 import rospy
 import tf
 import visualization_msgs
@@ -152,8 +153,9 @@ class Visualizer:
         marker.lifetime = rospy.Duration(0) # will live forever
         self.pub.publish(marker)
 
-    def vizArrows(self, absoluteVectors, size = [1.0, 1.0, 1.0], idNum = None, color = None, alpha = None):
-        def arrow(start, end):
+    def vizArrows(self, absoluteVectors, size = [.10, .10, .10], idNum = None, color = None, alpha = None):
+        color = color
+        def arrow(start, end, color=color):
             marker = Marker()   # create an empty Marker
             marker.header.frame_id = "/map"  # marker source frame
             #marker.header.stamp = rospy.Time()  # timestamp - I think ros automatically adds these
@@ -175,7 +177,8 @@ class Visualizer:
             marker.scale.y = size[1]
             marker.scale.z = size[2]
             # assign the marker color
-            if not color:
+            c = color
+            if not c:
                 color = [1.0, 1.0, 1.0] # default to a white arrow
                 marker.color.r = color[0]
                 marker.color.g = color[1]
