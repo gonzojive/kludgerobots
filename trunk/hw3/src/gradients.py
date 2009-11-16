@@ -117,9 +117,8 @@ class GradientField:
         rospy.loginfo("100% complete")
 
 
-    def displayImageOfCosts(self):
+    def displayImageOfCosts(self, cutoff = 5.0):
         vals = []
-        cutoff = 2.0
         for c in self.gradientMap:
             for d in c:
                 data = 0
@@ -131,15 +130,15 @@ class GradientField:
         imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
 
 
-    def displayImageOfIntrinsics(self):
+    def displayImageOfIntrinsics(self, cutoff = 100.0):
         vals = []
         for c in self.gradientMap:
             for d in c:
                 data = 0
-                if d.intrinsicVal > 100:
+                if d.intrinsicVal > cutoff:
                     data = 0
                 else:
-                    data = 100 - d.intrinsicVal
+                    data = cutoff - d.intrinsicVal
                 vals.append(data)
         imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
 
@@ -177,6 +176,7 @@ class GradientField:
             neighbors.append(self.gradientMap[x][y+1])
         return neighbors
 
+
     def cellIsValid(self, i, j):
         if i < 0 or i >= self.gridWidth or j < 0 or j >= self.gridHeight:
             return None
@@ -184,16 +184,41 @@ class GradientField:
         if cell.cost == None:
             return None
         return cell
-        
+
+
+    def calculateGradients(self):
+        for col in self.gradientMap:
+            for cell in col:
+                if not cell.value:
+                    continue
+                N = self.cellIsValid(cell.xInd, cell.yInd+1)
+                S = self.cellIsValid(cell.xInd, cell.yInd-1)
+                E = self.cellIsValid(cell.xInd+1, cell.yInd)
+                W = self.cellIsValid(cell.xInd-1, cell.yInd)
+                grad = [0, 0]
+                # Testing - remove before final
+                if (E == None and W == None) or (N == None and S == None):
+                    rospy.loginfo("Error! No gradient to calculate")
+                    continue
+                if E == None:
+                    grad[0] = W.value - cell.value
+                elif W == None:
+                    grad[0] = cell.value - E.value
+                else:
+                    grad[0] = W.value - E.value
+                if N == None:
+                    grad[1] = S.value - cell.value
+                elif S == None:
+                    grad[1] = cell.value - N.value
+                else:
+                    grad[1] = S.value - N.value
+                cell.gradient = grad
 
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
-
     #uses LPN algorithm, as in paper
     def calculateCosts(self, iterations = 70):
-
          # start from the goals on the active list, and propagate the values from there
-
          temp =[]
          for i in range(iterations):
             while self.activeList:
@@ -248,30 +273,24 @@ class GradientField:
                     # Calculate the correct theta, based on NS and EW
                     if NS != None:
                         if EW != None:
-                            theta = math.atan2(float(NS.cost),float(EW.cost))
+                            traj = [EW.cost, NS.cost]
                             if NS.cost < EW.cost:
                                 minPoint = NS
                             else:
                                 minPoint = EW
                         else:
-                            theta = 0
+                            traj = [1.0, 0.0]
                             minPoint = NS
                     else:
                         if EW != None:
-                            theta = math.pi
+                            traj = [0.0, 1.0]
                             minPoint = EW
                         else:
                             rospy.loginfo("Error! Grid [%d][%d] at [%0.2f, %0.2f] has NO valid neighbors", n.xInd, n.yInd, n.x, n.y)
                             continue
 
                     line_origin = [minPoint.x, minPoint.y]
-                    line_trajectory = [math.cos(theta), math.sin(theta)]
-                    #find the equation of the line
-                    m = math.tan(theta) #slope of line
-                    c = minPoint.y - m*minPoint.x #intercept
-                    #eqn should be of the form ax+by+c =0, so change the signs of the co-efficients accordingly
-                    #find distance of n from this wavefront line
-                    #dist = abs(n.y - m*n.x - c)/math.sqrt(1+m*m)
+                    line_trajectory = traj
                     dist = vector.lineDistanceToPoint([n.x, n.y], line_origin, line_trajectory)
                     #update cost
                     newCost = minPoint.cost + dist*n.intrinsicVal

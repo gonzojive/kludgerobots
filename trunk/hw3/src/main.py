@@ -34,7 +34,7 @@ class Part2():
         self._motionErr = motionModel.MotionErrorModel(0.1, 0.1, 0.1, 0.1, 0.1, 0.1)
         self.initialPose = pose.Pose(34.0, 46.0, 0.0)
         self._gradients = None
-        self.cellSpacing = 0.1
+        self.cellSpacing = 0.2
 
     def robotPosition(self):
         return self._position
