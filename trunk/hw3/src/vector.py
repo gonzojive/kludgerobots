@@ -105,5 +105,3 @@ def lineDistanceToPoint(pt, line_origin, line_trajectory):
     traj_cross_w = cross(line_trajectory, w)
     return vector_length(traj_cross_w) / vector_length(line_trajectory)
 
-
-
