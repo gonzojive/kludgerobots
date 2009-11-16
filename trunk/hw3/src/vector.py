@@ -2,9 +2,9 @@ import math
 
 def vector3d(v):
     if len(v) == 2:
-        return [v[0], v[1], 0.0]
+        return [float(v[0]), float(v[1]), 0.0]
     else:
-        return v
+        return map(float, v)
     
 
 def cross3d(v, w):
