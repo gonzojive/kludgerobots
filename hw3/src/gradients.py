@@ -51,6 +51,8 @@ class GradientField:
         self.initializeGradientMap(distanceMap)
         self.startPosition = initialPose
         self.foundStartPosition = False
+        self.stepSize = 0.01 #1 cm step size for now
+        self.goals = []
 
         #goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
         #self.setGoals(goals)
@@ -72,6 +74,7 @@ class GradientField:
             cell = self.cellNearestXY(g.x, g.y)
             cell.cost = 0
             self.activeList.append(cell)
+            self.goals.append(cell)
         self.startCell = self.cellNearestXY(self.startPosition.x, self.startPosition.y)
         self.foundStartPosition = False
  
@@ -322,7 +325,15 @@ class GradientField:
             rospy.loginfo("iteration %d done",i)
          #end iterations
          rospy.loginfo("costs calculated")
-         
        
 
-
+    def findPathGivenGradient(goalPosition):
+        path =[]
+        currPos = self.startPosition
+        goal = goals.index(goalPosition)
+        while not (currPos.x == goal.x and currPos.y == goal.y):
+            curr_pos = vector_add(currPos,self.stepSize * interpolateGradientAtXY(currPos.x,currPos.y))
+            path.append(curr_pos)
+        rospy.loginfo("found goal. path is:")
+        for p in path:
+            rospy.loginfo("%0.2f,%0.2f,%0.2f",p.x,p.y,p.theta)

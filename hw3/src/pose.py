@@ -27,7 +27,7 @@ class Pose:
 
     def toStr(self):
         return "(%0.2f, %0.2f) at %0.2f degrees - weight = %0.2f" % (self.x, self.y, util.r2d(self.theta), self.weight)
-
+            
 
 # class PoseSet
 #   contains the list of poses
