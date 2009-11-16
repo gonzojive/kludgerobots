@@ -23,6 +23,11 @@ class MapPoint:
         self.intrinsicVal = 1
         self.cost = None
         
+
+class Goals:
+    def __init__(self,x,y):
+        self.x = x;
+        self.y = y;
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
     def __init__(self, cellSpacing, distanceMap, laserReadings = None):
@@ -44,10 +49,13 @@ class GradientField:
         self.gridHeight = int(self.mapHeight / cellSpacing)
         self.gradientMap =  []
         self.initializeGradientMap(distanceMap)
-        #rospy.loginfo("done with intrinsic costs.Starting LPN algo")
-        #goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
-        #self.setGoals(goals)
-        #self.calculateCosts()
+
+        goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
+        self.setGoals(goals)
+        
+        rospy.loginfo("done with intrinsic costs.Starting LPN algo")
+        self.calculateCosts()
+
 
     def setGoals(self, goals):        
         for row in self.gradientMap:
@@ -55,6 +63,7 @@ class GradientField:
                 point.cost = None
         self.activeList = []
         for g in goals:
+            rospy.loginfo("goal is (%f,%f)",g.x,g.y)
             cell = self.cellNearestXY(g.x, g.y)
             cell.cost = 0
             self.activeList.append(cell)
@@ -150,6 +159,7 @@ class GradientField:
             return self.intrinsicChangeValue + (self.steepSlope * (distance - self.changeDistance))
         else:
             return self.intrinsicEndValue
+
     
     #function to find the 4 nearest neighbors
     def findNeighbors(self,point):
@@ -174,12 +184,16 @@ class GradientField:
             return None
         return cell
         
+
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
+
     #uses LPN algorithm, as in paper
     def calculateCosts(self, iterations = 70):
+
          # start from the goals on the active list, and propagate the values from there
-         numIterations = iterations #each iteration increases the exploration depth by 1
+
+         numIterations =70 #each iteration increases the exploration depth by 1
          temp =[]
          for i in range(numIterations):
             while self.activeList:
@@ -214,6 +228,7 @@ class GradientField:
                         if S != None:
                             # Case 3: S is valid, N is not - take S
                             NS = S
+                       
                     # East-West comparison
                     if E != None:
                         if W != None:
@@ -233,7 +248,7 @@ class GradientField:
                     # Calculate the correct theta, based on NS and EW
                     if NS != None:
                         if EW != None:
-                            theta = math.atan2(float(NS.cost)/float(EW.cost))
+                            theta = math.atan2(float(NS.cost),float(EW.cost))
                             if NS.cost < EW.cost:
                                 minPoint = NS
                             else:
@@ -250,13 +265,13 @@ class GradientField:
                             continue
 
                     #find the equation of the line
-                    m = NS.cost/EW.cost #slope of line
+                    m = math.tan(theta) #slope of line
                     c = minPoint.y - m*minPoint.x #intercept
                     #eqn should be of the form ax+by+c =0, so change the signs of the co-efficients accordingly
                     #find distance of n from this wavefront line
                     dist = abs(n.y - m*n.x - c)/math.sqrt(1+m*m)
                     #update cost
-                    newCost = point.cost + dist*n.intrinsicVal
+                    newCost = minPoint.cost + dist*n.intrinsicVal
                     if n.cost:
                         if newCost < n.cost:
                             n.cost = newCost
