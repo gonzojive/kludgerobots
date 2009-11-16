@@ -153,7 +153,7 @@ class Visualizer:
         marker.lifetime = rospy.Duration(0) # will live forever
         self.pub.publish(marker)
 
-    def vizArrows(self, absoluteVectors, size = [.10, .10, .10], idNum = None, color = None, alpha = None):
+    def vizArrows(self, absoluteVectors, size = [.02, .02, .02], idNum = None, color = None, alpha = None):
         color = color
         def arrow(start, end, color=color):
             marker = Marker()   # create an empty Marker
