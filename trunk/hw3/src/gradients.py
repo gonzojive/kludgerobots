@@ -3,6 +3,8 @@ import mapmodel
 import math
 import imageutil
 import vector
+from vector import *
+import viz
 
 ROBOT_RADIUS = 0.15
 DISTANCE_CHANGE_POINT = 1.0
@@ -140,6 +142,28 @@ class GradientField:
         imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
 
 
+    def displayGradient(self, v):
+        self.calculateGradients()
+        def absVectorAtCell(cell):
+            grad = cell.gradient
+            rospy.loginfo("cell gradient: (%.2f, %.2f) of len %f", grad[0], grad[1], vector_length(grad))
+            #grad = vector_normalize(grad)
+            grad = vector_scale(vector_normalize(grad), self.spacing)
+            origin = [cell.x, cell.y]
+            absVector = ( origin, vector_add(origin, grad))
+            return absVector
+
+        def allCells():
+            for col in self.gradientMap:
+                for cell in col:
+                    if cell.gradient and vector_length_squared(cell.gradient) > .0001:
+                        yield cell
+
+        v.vizArrows([ ([0,0], [1,1]),
+                      ([1,1], [2,-1]) ] )
+        v.vizArrows([absVectorAtCell(cell) for cell in allCells()])
+
+
     def displayImageOfIntrinsics(self, cutoff = 100.0):
         vals = []
         for c in self.gradientMap:
@@ -199,7 +223,7 @@ class GradientField:
     def calculateGradients(self):
         for col in self.gradientMap:
             for cell in col:
-                if not cell.value:
+                if not cell.cost:
                     continue
                 N = self.cellIsValid(cell.xInd, cell.yInd+1)
                 S = self.cellIsValid(cell.xInd, cell.yInd-1)
@@ -211,17 +235,17 @@ class GradientField:
                     rospy.loginfo("Error! No gradient to calculate")
                     continue
                 if E == None:
-                    grad[0] = W.value - cell.value
+                    grad[0] = W.cost - cell.cost
                 elif W == None:
-                    grad[0] = cell.value - E.value
+                    grad[0] = cell.cost - E.cost
                 else:
-                    grad[0] = W.value - E.value
+                    grad[0] = W.cost - E.cost
                 if N == None:
-                    grad[1] = S.value - cell.value
+                    grad[1] = S.cost - cell.cost
                 elif S == None:
-                    grad[1] = cell.value - N.value
+                    grad[1] = cell.cost - N.cost
                 else:
-                    grad[1] = S.value - N.value
+                    grad[1] = S.cost - N.cost
                 cell.gradient = grad
 
     # calculateCosts()
