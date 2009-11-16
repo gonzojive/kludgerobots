@@ -350,7 +350,8 @@ class GradientField:
             #add the temp list to the active list, since the values for all the entries in temp have been updated
             self.activeList.extend(temp)
             temp =[]
-            rospy.loginfo("iteration %d done",i)
+            if i%10 == 0:
+                rospy.loginfo("iteration %d done",i)
          #end iterations
          rospy.loginfo("costs calculated")
        
