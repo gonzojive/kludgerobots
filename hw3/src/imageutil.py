@@ -59,7 +59,7 @@ def showHistPlotOfNums(nums, numFields=50):
     ax.set_ylabel('Probability')
     #ax.set_title(r'$\mathrm{Histogram\ of\ IQ:}\ \mu=100,\ \sigma=15$')
     ax.set_xlim(min(nums), max(nums))
-    ax.set_ylim(0, 5.25)
+    ax.set_ylim(0, 1.0)
     ax.grid(True)
 
     plt.show()
