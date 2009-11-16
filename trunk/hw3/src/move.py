@@ -82,9 +82,21 @@ class MoveFromKeyboard:
                     self.gradient.displayImageOfCosts(int(cmd[2]))
             elif cmd[1] == "gradient" or cmd[1] == "grad" or cmd[1] == "g":
                 self.gradient.displayGradient(self.viz)
-
         elif cmd[0] == "showPath":
             self.gradient.findPathGivenGradient(int(cmd[1]), self.viz)
+        elif cmd[0] == "test":
+            if len(cmd) == 1 or cmd[1] == "1":
+                rospy.loginfo("Setting goal (40, 45)")
+                g = goal.Goal(40, 45)
+                self.goals.newGoal(g)
+                self.gradient.setGoals(self.goals.goalList())
+                rospy.loginfo("Iterating 50 costs")
+                self.gradient.calculateCosts(50)
+                rospy.loginfo("Displaying gradient field")
+                self.gradient.displayGradient(self.viz)
+                rospy.loginfo("Calculating optimal path")
+                self.gradient.findPathGivenGradient(0, self.viz)
+                rospy.loginfo("Done with test")
         else:
             rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[0], cmd[1])
             self.command = [float(cmd[0]), float(cmd[1])]
