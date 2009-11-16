@@ -22,6 +22,7 @@ POINT_WIDTH = .1
 class Visualizer:
     def __init__(self):
         self.pub = rospy.Publisher("visualization_marker", Marker)
+        self.pubArray = rospy.Publisher("visualization_marker_array", MarkerArray)
         self.posePub = rospy.Publisher("particlecloud", PoseArray)
         self.idCounter = 400
         self.namedIdCounter = 1
@@ -49,7 +50,9 @@ class Visualizer:
         marker.color.b = b;
         marker.color.a = 1.0;
 
-    
+    def otherStuff(self):
+        print "did stuff"
+
     def makeMarker(self, markerType=Marker.LINE_LIST, name=None, color=None):
         # set the ID from a name
         the_id = None
@@ -57,7 +60,7 @@ class Visualizer:
             the_id = self.getIdForName(name)
 
         marker = Marker()
-        marker.header.frame_id = "/base_laser";
+        marker.header.frame_id = "/map";
         marker.ns = "basic_shapes";
         if the_id:
             marker.id = the_id
@@ -90,8 +93,8 @@ class Visualizer:
                              [vector3d(start), vector3d(end)])        
         self.pub.publish(marker)
 
-    def vizSegments(self, points, name=None, color=None):
-        marker = self.makeMarker(markerType=Marker.LINE_STRIP, name=name, color=color)
+    def vizPoints(self, points, name=None, color=None):
+        marker = self.makeMarker(markerType=Marker.POINTS, name=name, color=color)
         marker.points = map (lambda pt : Point(x = pt[0], y = pt[1], z = pt[2]),
                              map(vector3d, points))        
         self.pub.publish(marker)
@@ -149,6 +152,42 @@ class Visualizer:
         marker.lifetime = rospy.Duration(0) # will live forever
         self.pub.publish(marker)
 
+    def vizArrows(self, absoluteVectors, size = [1.0, 1.0, 1.0], idNum = None, color = None, alpha = None):
+        def arrow(start, end):
+            marker = Marker()   # create an empty Marker
+            marker.header.frame_id = "/map"  # marker source frame
+            #marker.header.stamp = rospy.Time()  # timestamp - I think ros automatically adds these
+            marker.ns = "arrows"    # namespace - might as well make it specific
+            if idNum:   # if the caller wants to specify id numbers so the arrows last until overwritten
+                marker.id = idNum
+            else:   # otherwise, just give it a default number
+                marker.id = self.idCounter
+                self.idCounter += 1
+            if marker.id > self.arrowIDMax:
+                self.arrowIDMax = marker.id
+            marker.type = Marker.ARROW  # arrow type marker
+            marker.action = Marker.ADD  # adding a new marker
+            # assign the marker starting position
+            marker.points = map (lambda pt : Point(x = pt[0], y = pt[1], z = pt[2]),
+                                 [vector3d(start), vector3d(end)])
+            # scale the marker if necessary
+            marker.scale.x = size[0]
+            marker.scale.y = size[1]
+            marker.scale.z = size[2]
+            # assign the marker color
+            if not color:
+                color = [1.0, 1.0, 1.0] # default to a white arrow
+                marker.color.r = color[0]
+                marker.color.g = color[1]
+                marker.color.b = color[2]
+                marker.color.a = alpha or 1.0   # if alpha is defined, use that, otherwise use 1.0
+                marker.lifetime = rospy.Duration(0) # will live forever
+            return marker
+        markers = [arrow(start,end) for [start, end] in absoluteVectors]
+        marr = MarkerArray()
+        marr.markers = markers
+        self.pubArray.publish(marr)
+
     def vizPoseArray(self, poses):
         poseArray = PoseArray()
         poseArray.header.frame_id = "/map"
@@ -163,33 +202,4 @@ class Visualizer:
             poseArray.poses[-1].orientation.z = quat[2]
             poseArray.poses[-1].orientation.w = quat[3]
         self.posePub.publish(poseArray)
-
-    def vizPoints(self, points, the_id=None):
-        marker = Marker()
-        marker.header.frame_id = "/map"
-        marker.ns = "basic_shapes"
-        if the_id:
-            marker.id = the_id
-        else:
-            marker.id = self.idCounter;
-        self.idCounter = self.idCounter + 1
-        marker.type = Marker.POINTS;
-        marker.action = Marker.ADD;
-        marker.pose.position.x = 0;
-        marker.pose.position.y = 0;
-        marker.pose.position.z = 0;
-        marker.pose.orientation.x = 0.0;
-        marker.pose.orientation.y = 0.0;
-        marker.pose.orientation.z = 0.0;
-        marker.pose.orientation.w = 1.0;
-        marker.scale.x = POINT_WIDTH;
-        marker.scale.y = POINT_WIDTH;
-        marker.scale.z = POINT_WIDTH;
-        marker.color.r = 1.0;
-        marker.color.g = .40;
-        marker.color.b = 0.0;
-        marker.color.a = 1.0;
-        marker.lifetime.secs = .100
-        marker.points = map (lambda pt : Point(x = pt[0], y = pt[1]), points)
-        self.pub.publish(marker)
 
