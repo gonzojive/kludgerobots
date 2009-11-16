@@ -2,7 +2,7 @@ import rospy
 import mapmodel
 import math
 import imageutil
-
+import vector
 
 ROBOT_RADIUS = 0.15
 DISTANCE_CHANGE_POINT = 1.0
@@ -50,11 +50,11 @@ class GradientField:
         self.gradientMap =  []
         self.initializeGradientMap(distanceMap)
 
-        goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
-        self.setGoals(goals)
+        #goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
+        #self.setGoals(goals)
         
-        rospy.loginfo("done with intrinsic costs.Starting LPN algo")
-        self.calculateCosts()
+        #rospy.loginfo("done with intrinsic costs.Starting LPN algo")
+        #self.calculateCosts()
 
 
     def setGoals(self, goals):        
@@ -119,13 +119,14 @@ class GradientField:
 
     def displayImageOfCosts(self):
         vals = []
+        cutoff = 2.0
         for c in self.gradientMap:
             for d in c:
                 data = 0
-                if not d.cost or d.cost > 100:
+                if not d.cost or d.cost > cutoff:
                     data = 0
                 else:
-                    data = 100 - d.intrinsicVal
+                    data = cutoff - d.cost
                 vals.append(data)
         imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
 
@@ -193,9 +194,8 @@ class GradientField:
 
          # start from the goals on the active list, and propagate the values from there
 
-         numIterations =70 #each iteration increases the exploration depth by 1
          temp =[]
-         for i in range(numIterations):
+         for i in range(iterations):
             while self.activeList:
                 currentPoint = self.activeList.pop() #currentPoint is the point whose value we know, and which will be used to propagate values
                 
@@ -264,12 +264,15 @@ class GradientField:
                             rospy.loginfo("Error! Grid [%d][%d] at [%0.2f, %0.2f] has NO valid neighbors", n.xInd, n.yInd, n.x, n.y)
                             continue
 
+                    line_origin = [minPoint.x, minPoint.y]
+                    line_trajectory = [math.cos(theta), math.sin(theta)]
                     #find the equation of the line
                     m = math.tan(theta) #slope of line
                     c = minPoint.y - m*minPoint.x #intercept
                     #eqn should be of the form ax+by+c =0, so change the signs of the co-efficients accordingly
                     #find distance of n from this wavefront line
-                    dist = abs(n.y - m*n.x - c)/math.sqrt(1+m*m)
+                    #dist = abs(n.y - m*n.x - c)/math.sqrt(1+m*m)
+                    dist = vector.lineDistanceToPoint([n.x, n.y], line_origin, line_trajectory)
                     #update cost
                     newCost = minPoint.cost + dist*n.intrinsicVal
                     if n.cost:
