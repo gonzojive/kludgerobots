@@ -55,10 +55,14 @@ class MoveFromKeyboard:
         elif cmd[0] == "start":
             if self.gradient:
                 self.gradient.setGoals(self.goals.goalList())
-                iterations = 50 # 50 iterations unless user specifies otherwise
                 if len(cmd) >= 2:
-                    iterations = int(cmd[1])
-                self.gradient.calculateCosts(iterations)
+                    self.gradient.calculateCosts(int(cmd[1]))
+                self.gradient.calculateCosts()
+        elif cmd[0] == "display":
+            if cmd[1] == "intrinsic":
+                self.gradient.displayImageOfIntrinsics()
+            elif cmd[1] == "cost":
+                self.gradient.displayImageOfCosts()
         else:
             rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[0], cmd[1])
             self.command = [float(cmd[0]), float(cmd[1])]
