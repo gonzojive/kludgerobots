@@ -178,7 +178,7 @@ class ParticleFilter(threading.Thread):
         #self.mapModel.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
 
     def updatePoseAverage(self):
-        rospy.loginfo("updating pose")
+        #rospy.loginfo("updating pose")
         thetaX = 0
         thetaY = 0
         totalWeight = 0
@@ -251,7 +251,7 @@ class ParticleFilter(threading.Thread):
         # it should sort of maybe in some cases correct for differing number of beams per cast.  And it works!
         avgWeightPerBeam = avgWeight * float(self.numBeamVectors)
         varPerBeamWeight = statutil.variance( [o.weight * float(self.numBeamVectors) for o in self.poseSet.poses] )
-        rospy.loginfo("Average pose weight: %f per beam: %f (variance: %f)", avgWeight, varPerBeamWeight, avgWeightPerBeam)
+        #rospy.loginfo("Average pose weight: %f per beam: %f (variance: %f)", avgWeight, varPerBeamWeight, avgWeightPerBeam)
         # good values are near .12
         if self.poseAverage: # (after we have initiailized)
             # add a bunch of random points sort of nearby no matter what.

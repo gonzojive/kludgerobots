@@ -94,7 +94,7 @@ class MoveFromKeyboard:
             self.gradient.setGoals(self.goals.goalList())
             self.gradient.calculateCosts(70)
             self.gradient.displayGradient(self.viz)
-        rospy.loginfo("sending linearVel = %f,angVel =%f",linVel,angVel)
+        #rospy.loginfo("sending linearVel = %f,angVel =%f",linVel,angVel)
         return [linVel,angVel]
             
         
