@@ -54,18 +54,27 @@ class MoveFromKeyboard:
         goals = [[g.x, g.y] for g in self.gradient.goals]
         
         #keep turning without translation until we are in line with the destination
-        if abs(currPose.theta - newTheta) > 0.1:
+        if abs(currPose.theta - newTheta) > 1:
+            if currPose.theta > newTheta:
+                angVel = -0.1
+            else:
+                angVel = 0.1
+            linVel = 0.01
+        elif abs(currPose.theta - newTheta) > 0.05:
             if currPose.theta > newTheta:
                 angVel = -0.02
             else:
                 angVel = 0.02
-            linVel = 0
+            linVel = 0.01
         else:
             angVel = 0
+            linVel = 0.2
+        if util.closeToOne([currPose.x,currPose.y], goals,0.5):
             linVel = 0.1
-        if util.closeToOne([currPose.x,currPose.y], goals,0.3):
+       if util.closeToOne([currPose.x,currPose.y], goals,0.3):
             linVel = 0
             angVel = 0
+        
             rospy.loginfo("reached goal");
         rospy.loginfo("sending linearVel = %f,angVel =%f",linVel,angVel)
         return [linVel,angVel]

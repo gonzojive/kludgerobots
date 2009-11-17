@@ -15,6 +15,7 @@ from vector import *
 
 # Minimum values before we run the filter again
 minimumMovement = .03    # 30 mm - probably want to increase this when we have more samples
+
 minimumTurn = util.d2r(4)  # 4 degrees
 
 
@@ -37,6 +38,7 @@ class ParticleFilter(threading.Thread):
         self.runFilter = 0  # don't run the filter until you've moved enough
         self.runFilterLock = threading.Lock()
         self.poseAverage = pose.Pose(0.0, 0.0, 0.0)
+        self.poseAverageLock = threading.Lock()
         self.numDesiredPoses = 500 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         self.mapModel = mm
@@ -163,27 +165,32 @@ class ParticleFilter(threading.Thread):
         #self.mapModel.updateMapToOdomTf(self.poseAverage, self.lastOdom, self.startTime)
 
     def updatePoseAverage(self):
-        self.poseAverage = pose.Pose(0,0,0)
+        rospy.loginfo("updating pose")
         thetaX = 0
         thetaY = 0
         totalWeight = 0
+        newPose = pose.Pose(0, 0, 0)
         for p in self.poseSet.poses:
-            self.poseAverage.x += p.x*p.weight
-            self.poseAverage.y += p.y*p.weight
+            newPose.x += p.x*p.weight
+            newPose.y += p.y*p.weight
             thetaX += math.cos(p.theta)
             thetaY += math.sin(p.theta)
             totalWeight += p.weight
         if totalWeight < util.NUMERIC_TOL:
-            self.poseAverage.x = 0.0
-            self.poseAverage.y = 0.0
-            self.poseAverage.theta = 0.0
-            self.poseAverage.weight = 0.0
+            newPose.x = 0.0
+            newPose.y = 0.0
+            newPose.theta = 0.0
+            newPose.weight = 0.0
         else:
             denom = 1.0/totalWeight
-            self.poseAverage.x *= denom
-            self.poseAverage.y *= denom
-            self.poseAverage.theta = math.atan2(thetaY*denom, thetaX*denom)
-            self.poseAverage.weight = 1.0
+            newPose.x *= denom
+            newPose.y *= denom
+            newPose.theta = math.atan2(thetaY*denom, thetaX*denom)
+            newPose.weight = 1.0
+        self.poseAverageLock.acquire()
+        self.poseAverage = newPose
+        self.poseAverageLock.release()
+        
 
     # predictionStep(): update each pose given old and new odometry readings
     # this function currently does no locking, so it assumes that no other thread is modifying poseSet.

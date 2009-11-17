@@ -17,6 +17,7 @@ import nav_msgs
 import laser
 import goal
 import gradients
+import copy
 
 from sensor_msgs.msg import LaserScan
 from geometry_msgs.msg import Twist
@@ -38,6 +39,8 @@ class Part2():
         self._gradients = None
         self._localGradients = None
         self.cellSpacing = 0.2
+        
+        self.orientationDone = None
         
         
     def robotPosition(self):
@@ -94,9 +97,38 @@ class Part2():
             self._pFilter.laserInMapLock.acquire()
             self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
             self._pFilter.laserInMapLock.release()
-        
-    
-        
+            
+    def reduceFilter(self):
+        #spin a few times to reduce particle cloud and get well-localized
+        rate = rospy.Rate(10)
+        (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', rospy.Time(0))
+
+        for i in xrange(0,10):
+            self.update(trans, rot)
+            pass
+            self.velPublish.publish(Twist(Vector3(0.1,0,0),Vector3(0,0,0)))
+            rate.sleep()
+        for i in xrange(0, 40): 
+            self.update(trans, rot)
+            pass
+            self.velPublish.publish(Twist(Vector3(0,0,0),Vector3(0,0,0.1)))
+            rate.sleep()        
+        for i in xrange(0, 80): 
+            self.update(trans, rot)
+            pass
+            self.velPublish.publish(Twist(Vector3(0,0,0),Vector3(0,0,-0.1)))
+            rate.sleep()
+        for i in xrange(0, 40): 
+            self.update(trans, rot)
+            pass
+            self.velPublish.publish(Twist(Vector3(0,0,0),Vector3(0,0,0.1)))
+            rate.sleep()
+
+        for i in xrange(0,10):
+            self.update(trans, rot)
+            pass
+            self.velPublish.publish(Twist(Vector3(-0.1,0,0),Vector3(0,0,0)))
+            rate.sleep()
         
     def initNode(self):
         rospy.init_node('kludge3')
@@ -127,9 +159,17 @@ class Part2():
         while not rospy.is_shutdown():
             try:
                 (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', rospy.Time(0))
-                #send commands
+                
+                #send commands                
                 if self._gradients.initializationDone:
-                    [linVel,angVel] = self._move.getNextCommand(self._pFilter.poseAverage)
+                    #if not self.orientationDone:
+                     #   rospy.loginfo("doing orientation")
+                      #  self.reduceFilter()
+                       # self.orientationDone = 1
+                    self._pFilter.poseAverageLock.acquire()
+                    newPose = copy.deepcopy(self._pFilter.poseAverage)
+                    self._pFilter.poseAverageLock.release()
+                    [linVel,angVel] = self._move.getNextCommand(newPose)
                     #publish commands if we haven't reached goal. else don't publish anything
                     self.velPublish.publish(Twist(Vector3(linVel,0,0),Vector3(0,0,angVel)))
                     
