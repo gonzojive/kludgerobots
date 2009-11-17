@@ -63,11 +63,7 @@ class GradientField:
         self.gradientMap =  []
         self.stepSize = STEP_SIZE
         self.goals = []
-
         self.initializationDone = None
-        
-        
-
         self.localField = None
         self.globalField = None
         self.localObstacles = None
@@ -93,31 +89,32 @@ class GradientField:
         self.gridHeight = self.globalField.gridHeight
         self.gradientMap = copy.deepcopy(self.globalField.gradientMap)
         self.localObstacles = LocalObstacles(self.gridWidth, self.gridHeight)
+        self.localGoals = []
 
 
     def newLaserReading(self, laserPoints):
-        minPoint = [10000, 10000]
-        maxPoint = [-1, -1]
+        #minPoint = [10000, 10000]
+        #maxPoint = [-1, -1]
         obsList = []
         self.localGoals = []
         for p in laserPoints:
             cell = self.cellNearestXY(p[0], p[1])
-            if cell.xInd < minPoint[0]:
-                minPoint[0] = cell.xInd
-            if cell.xInd > maxPoint[0]:
-                maxPoint[0] = cell.xInd
-            if cell.yInd < minPoint[1]:
-                minPoint[1] = cell.yInd
-            if cell.yInd > maxPoint[1]:
-                maxPoint[1] = cell.yInd
-            if cell.intrinsicVal < NEW_OBSTACLE_THRESH:
+            #if cell.xInd < minPoint[0]:
+            #    minPoint[0] = cell.xInd
+            #if cell.xInd > maxPoint[0]:
+            #    maxPoint[0] = cell.xInd
+            #if cell.yInd < minPoint[1]:
+            #    minPoint[1] = cell.yInd
+            #if cell.yInd > maxPoint[1]:
+            #    maxPoint[1] = cell.yInd
+            if cell.intrinsicVal < NEW_OBSTACLE_THRESH and cell not in obsList:
                 rospy.loginfo("Found new obstacle at cell (%0.2f, %0.2f)", cell.x, cell.y)
                 obsList.append(cell)
             else:
                 if cell not in self.localGoals:
                     self.localGoals.append(cell)
         #rospy.loginfo("Range: (%d, %d) to (%d, %d)", minPoint[0], minPoint[1], maxPoint[0], maxPoint[1])
-        self.localObstacles.newObstacles(obsList, minPoint, maxPoint)
+        #self.localObstacles.newObstacles(obsList, minPoint, maxPoint)
         
 
     def setGoals(self, goals):
