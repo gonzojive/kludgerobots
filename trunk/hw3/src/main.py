@@ -34,7 +34,7 @@ class Part2():
         self._pFilter = None
         self.mapModel = None
         # I have no idea what good error values are
-        self._motionErr = motionModel.MotionErrorModel(0.1, 0.1, 0.1, 0.1, 0.1, 0.1)
+        self._motionErr = motionModel.MotionErrorModel(0.1, 0.01, 0.1, 0.1, 0.01, 0.1)
         self.initialPose = pose.Pose(34.0, 46.0, 0.0)
         self._gradients = None
         self._localGradients = None
@@ -178,7 +178,6 @@ class Part2():
             
             self.update(trans, rot)
             pass    # give another thread a chance to run
-            rospy.loginfo("Finished update, sleeping.")
             #rate.sleep()
 
 

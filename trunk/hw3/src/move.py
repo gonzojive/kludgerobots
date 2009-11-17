@@ -57,24 +57,30 @@ class MoveFromKeyboard:
         poseToGrad = util.normalizeAngle360(currPose.theta - newTheta)
         gradToPose = util.normalizeAngle360(newTheta - currPose.theta)
         thetaDiff = min(poseToGrad, gradToPose)
-        if thetaDiff > 1:
+        if thetaDiff > math.pi*0.5 and thetaDiff < math.pi*1.5:
             if poseToGrad < math.pi:
                 angVel = -0.2
             else:
                 angVel = 0.2
-            linVel = 0.01
-        elif thetaDiff > 0.05:
+            linVel = 0.0
+        elif thetaDiff > math.pi/4.0 or thetaDiff < math.pi*7.0/4.0:
             if poseToGrad < math.pi:
-                angVel = -0.04
+                angVel = -0.1
             else:
-                angVel = 0.04
-            linVel = 0.04
+                angVel = 0.1
+            linVel = 0.15
+        elif thetaDiff > math.pi/8.0 or thetaDiff < math.pi*15.0/8.0:
+            if poseToGrad < math.pi:
+                angVel = -0.05
+            else:
+                angVel = 0.05
+            linVel = 0.2
         else:
-            angVel = 0
-            linVel = 0.05
-        if util.closeToOne([currPose.x,currPose.y], goals, 0.5):
-            linVel = 0.1
-        if util.closeToOne([currPose.x,currPose.y], goals, 0.3):
+            angVel = 0.0
+            linVel = 0.3
+        if util.closeToOne([currPose.x,currPose.y], goals, 1.0):
+            linVel = linVel / 2.0
+        if util.closeToOne([currPose.x,currPose.y], goals, 0.2):
             linVel = 0
             angVel = 0
             rospy.loginfo("reached goal");
@@ -135,8 +141,8 @@ class MoveFromKeyboard:
                 g = goal.Goal(40, 45)
                 self.goals.newGoal(g)
                 self.gradient.setGoals(self.goals.goalList())
-                rospy.loginfo("Iterating 50 costs")
-                self.gradient.calculateCosts(50)
+                rospy.loginfo("Iterating 60 costs")
+                self.gradient.calculateCosts(60)
                 rospy.loginfo("Displaying gradient field")
                 self.gradient.displayGradient(self.viz)
                 rospy.loginfo("Calculating optimal path")
@@ -147,8 +153,8 @@ class MoveFromKeyboard:
             g = goal.Goal(40, 45)
             self.goals.newGoal(g)
             self.gradient.setGoals(self.goals.goalList())
-            rospy.loginfo("Iterating 50 costs")
-            self.gradient.calculateCosts(50)
+            rospy.loginfo("Iterating 60 costs")
+            self.gradient.calculateCosts(60)
             rospy.loginfo("Displaying gradient field")
             self.gradient.displayGradient(self.viz)
         elif cmd[0] == "move" or cmd[0] == "m":
