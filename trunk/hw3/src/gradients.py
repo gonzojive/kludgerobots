@@ -51,7 +51,7 @@ class GradientField:
         self.gradientMap =  []
         self.stepSize = STEP_SIZE
         self.goals = []
-        self.initializationDone = None
+        self.initializationDone = False
         self.localField = None
         self.globalField = None
         self.localObstacles = None
@@ -127,6 +127,7 @@ class GradientField:
 
     def newLaserReading(self, laserPoints):
         obsList = []
+        rospy.loginfo("Started local computation")
         for p in laserPoints:
             cell = self.cellNearestXY(p[0], p[1])
             if cell.intrinsicVal < NEW_OBSTACLE_THRESH and cell not in obsList:
@@ -134,16 +135,25 @@ class GradientField:
                 obsList.append(cell)
         #rospy.loginfo("Range: (%d, %d) to (%d, %d)", minPoint[0], minPoint[1], maxPoint[0], maxPoint[1])
 
+        updateRange = 3
+        updateList = []
         for o in obsList:
-            for x in xrange(o.xInd-4, o.xInd+5):
-                for y in xrange(o.yInd-4, o.yInd+5):  
-                    intCost = self.intrinsicFunc(abs((i-x)*self.spacing)+abs((j-y)*self.spacing))
+            for i in xrange(-updateRange,updateRange+1):
+                x = o.xInd + i
+                for y in xrange(o.yInd+abs(i)-updateRange, o.yInd+1+updateRange-abs(i)):
+                    intCost = self.intrinsicFunc((abs(o.xInd-x)+abs(o.yInd-y))/self.spacing)
                     cell = self.gradientMap[x][y]
                     if intCost > cell.intrinsicVal:
-                        cell.cost += (intCost - cell.intrinsicValue) * self.spacing
+                        rospy.loginfo("Intrinsic cost was: %0.2f, now %0.2f", cell.intrinsicVal, intCost)
+                        cell.cost += (intCost - cell.intrinsicVal) * self.spacing
                         cell.intrinsicVal = intCost
-                        # calculate gradient for this and 4 neighbors
-
+                        localCells = self.findNeighbors(cell) + [cell]
+                        for c in localCells:
+                            if c not in updateList:
+                                updateList.append(c)
+        for c in updateList:
+            self.calculateOneGradient(c)
+        self.initializationDone = True
 
     def updatePath(self, position):
         self.startCell = self.cellNearestXY(position.x, position.y)
@@ -290,7 +300,7 @@ class GradientField:
                         yield cell
 
         v.vizArrows([absVectorAtCell(cell) for cell in allCells()])
-        self.initializationDone = 1
+        self.initializationDone = True
 
 
     def displayImageOfIntrinsics(self, cutoff = 100.0):
@@ -457,7 +467,7 @@ class GradientField:
                 if len(self.highCostList) == 0:
                     rospy.loginfo("Both active lists are empty - no costs to calculate")
                     return
-                else:
+                #else:
                     #rospy.loginfo("Using the high cost list with threshold for high cost %f", self.costThresh)
                 self.activeList = self.highCostList
                 self.highCostList = []

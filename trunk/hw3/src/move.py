@@ -17,6 +17,7 @@ class MoveFromKeyboard:
         self.repeatCommand = 0
         self.gradient = None
         self.localGradient = None
+        self.pause = False
 
     def setGradientMaps(self, gmap, local):
         self.gradient = gmap
@@ -44,10 +45,16 @@ class MoveFromKeyboard:
         if r == [sys.stdin]:
             return raw_input()
             
-    def getNextCommand(self,currPose):   
+    def getNextCommand(self,currPose):
+        if self.pause:
+            return [0, 0]
         #rospy.loginfo("currPose is:(%f,%f,%f)",currPose.x,currPose.y,currPose.theta)
-        nearestGridPoint = self.gradient.cellNearestXY(currPose.x, currPose.y) #returns a gradientMap value
-        newGrad = self.gradient.interpolateGradientAtXY(currPose.x,currPose.y)
+        if not self.localGradient.initializationDone:
+            nearestGridPoint = self.gradient.cellNearestXY(currPose.x, currPose.y)
+            newGrad = self.gradient.interpolateGradientAtXY(currPose.x,currPose.y)
+        else:
+            nearestGridPoint = self.localGradient.cellNearestXY(currPose.x, currPose.y)
+            newGrad = self.localGradient.interpolateGradientAtXY(currPose.x,currPose.y)
         #newPose = vector_add([currPose.x,currPose.y], vector_scale(interpedGrad, self.gradient.stepSize))
         newTheta = math.atan2(newGrad[1],newGrad[0])
         #rospy.loginfo("going to (%f)",newTheta)
@@ -201,6 +208,10 @@ class MoveFromKeyboard:
                 self.repeatCommand = int(cmd[3])
             else:
                 self.repeatCommand = 0
+        elif cmd[0] == "stop":
+            self.pause = True
+        elif cmd[0] == "go":
+            self.pause = False
         else:
             rospy.loginfo("Not a valid command")
             
