@@ -257,6 +257,36 @@ class GradientField:
                     grad = vector_normalize(grad)
                 cell.gradient = grad
 
+    # given north south east and west cells (that may be nil), 
+    def wavefrontUpdateValue(self, N, S, E, W):
+        leastCostCell = None
+        for cell in [ N, S, E, W ]:
+            
+            if cell and ((not leastCostCell) or cell.cost < leastCostCell.cost):
+                leastCostCell = cell
+
+        adjCells = (E, W) if (leastCostCell == N or leastCostCell == S) else (N, S)
+        adjCells = filter(lambda x:x, adjCells)
+
+        minCost = leastCostCell.cost
+        adjCost = min([c.cost for c in adjCells]) if len(adjCells) > 0 else None
+
+        def costFromCostsAtAdjCardinalDirections(Ta, Tc):
+            if not Tc:
+                return Ta
+            # solve the quadratic  (T - Ta)^2 + (T-Tc)^2 = h^2 Fij^2
+            # We assume that Fij = 0 because we do not really understand it
+            # and this becomes the quadratic
+            # (2) T^2  +  -2(Ta + Tc) T + (Ta^2 - Tc^2) - h^2 = 0
+            h = 0.0 #Fij * self.spacing
+            a = 2.0
+            b = -2.0 * (Ta + Tc)
+            c = Ta*Ta - Tc*Tc - h*h
+            # solved by the quadratic formula
+            [root1, root2] = util.quadraticRoots(a, b, c)
+            return min(root1, root2)
+        return costFromCostsAtAdjCardinalDirections(minCost, adjCost)
+
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
     #uses LPN algorithm, as in paper
@@ -343,7 +373,10 @@ class GradientField:
                     line_trajectory = traj
                     dist = vector.lineDistanceToPoint([n.x, n.y], line_origin, line_trajectory)
                     #update cost
-                    newCost = minPoint.cost + dist*n.intrinsicVal
+                    #newCost = minPoint.cost + dist*n.intrinsicVal
+                    # alternatively use the Sethian method to propagate the wavefront
+                    newCost = self.wavefrontUpdateValue(N, S, E, W) + n.intrinsicVal
+                    
                     if n.cost:
                         if newCost < n.cost:
                             n.cost = newCost
@@ -387,3 +420,4 @@ class GradientField:
         v.vizConnectedPoints(path, color=[0,0,1])
         for p in path:
             rospy.loginfo("  %0.2f,%0.2f",p[0],p[1])
+
