@@ -135,16 +135,17 @@ class GradientField:
                 obsList.append(cell)
         #rospy.loginfo("Range: (%d, %d) to (%d, %d)", minPoint[0], minPoint[1], maxPoint[0], maxPoint[1])
 
-        updateRange = 3
+        updateRange = 6
         updateList = []
         for o in obsList:
             for i in xrange(-updateRange,updateRange+1):
                 x = o.xInd + i
                 for y in xrange(o.yInd+abs(i)-updateRange, o.yInd+1+updateRange-abs(i)):
-                    intCost = self.intrinsicFunc((abs(o.xInd-x)+abs(o.yInd-y))/self.spacing)
+                    #intCost = self.intrinsicFunc((abs(o.xInd-x)+abs(o.yInd-y))/self.spacing)
+                    intCost = 10 - (abs(o.xInd-x)+abs(o.yInd-y))
                     cell = self.gradientMap[x][y]
                     if intCost > cell.intrinsicVal:
-                        rospy.loginfo("Intrinsic cost was: %0.2f, now %0.2f", cell.intrinsicVal, intCost)
+                        #rospy.loginfo("Intrinsic cost was: %0.2f, now %0.2f", cell.intrinsicVal, intCost)
                         cell.cost += (intCost - cell.intrinsicVal) * self.spacing
                         cell.intrinsicVal = intCost
                         localCells = self.findNeighbors(cell) + [cell]
