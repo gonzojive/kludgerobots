@@ -81,7 +81,7 @@ class GradientField:
         self.localGoals = []
 
 
-    def newLaserReading(self, laserPoints):
+    def newLaserReadingOld(self, laserPoints):
         minPoint = [10000, 10000]
         maxPoint = [-1, -1]
         obsList = []
@@ -125,13 +125,32 @@ class GradientField:
             cell.cost = 0
             self.activeList.append(cell)
 
+    def newLaserReading(self, laserPoints):
+        obsList = []
+        for p in laserPoints:
+            cell = self.cellNearestXY(p[0], p[1])
+            if cell.intrinsicVal < NEW_OBSTACLE_THRESH and cell not in obsList:
+                rospy.loginfo("Found new obstacle at cell (%0.2f, %0.2f)", cell.x, cell.y)
+                obsList.append(cell)
+        #rospy.loginfo("Range: (%d, %d) to (%d, %d)", minPoint[0], minPoint[1], maxPoint[0], maxPoint[1])
+
+        for o in obsList:
+            for x in xrange(o.xInd-4, o.xInd+5):
+                for y in xrange(o.yInd-4, o.yInd+5):  
+                    intCost = self.intrinsicFunc(abs((i-x)*self.spacing)+abs((j-y)*self.spacing))
+                    cell = self.gradientMap[x][y]
+                    if intCost > cell.intrinsicVal:
+                        cell.cost += (intCost - cell.intrinsicValue) * self.spacing
+                        cell.intrinsicVal = intCost
+                        # calculate gradient for this and 4 neighbors
+
+
     def updatePath(self, position):
         self.startCell = self.cellNearestXY(position.x, position.y)
         self.startCell.cost = None
         self.costThresh = COST_THRESH_INITIAL
         self.highCostList = []
-        self.calculateCosts(30)
-        if not self.foundStartPosition():
+        while not self.foundStartPosition():
             self.calculateCosts(30)
         self.calculateGradients()
 
@@ -345,37 +364,40 @@ class GradientField:
             return None
         return cell
 
+    def calculateOneGradient(self, cell):
+        N = self.cellIsValid(cell.xInd, cell.yInd+1)
+        S = self.cellIsValid(cell.xInd, cell.yInd-1)
+        E = self.cellIsValid(cell.xInd+1, cell.yInd)
+        W = self.cellIsValid(cell.xInd-1, cell.yInd)
+        grad = [0, 0]
+        # Testing - remove before final
+        if E == None and W == None:
+            grad[0] = 0
+        elif E == None:
+            grad[0] = W.cost - cell.cost
+        elif W == None:
+            grad[0] = cell.cost - E.cost
+        else:
+            grad[0] = W.cost - E.cost
+        if N == None and S == None:
+            grad[1] = 0
+        elif N == None:
+            grad[1] = S.cost - cell.cost
+        elif S == None:
+            grad[1] = cell.cost - N.cost
+        else:
+            grad[1] = S.cost - N.cost
+        if (vector_length_squared(grad) > .0001):
+            grad = vector_normalize(grad)
+        cell.gradient = grad
+
 
     def calculateGradients(self):
         for col in self.gradientMap:
             for cell in col:
                 if not cell.cost:
                     continue
-                N = self.cellIsValid(cell.xInd, cell.yInd+1)
-                S = self.cellIsValid(cell.xInd, cell.yInd-1)
-                E = self.cellIsValid(cell.xInd+1, cell.yInd)
-                W = self.cellIsValid(cell.xInd-1, cell.yInd)
-                grad = [0, 0]
-                # Testing - remove before final
-                if E == None and W == None:
-                    grad[0] = 0
-                elif E == None:
-                    grad[0] = W.cost - cell.cost
-                elif W == None:
-                    grad[0] = cell.cost - E.cost
-                else:
-                    grad[0] = W.cost - E.cost
-                if N == None and S == None:
-                    grad[1] = 0
-                elif N == None:
-                    grad[1] = S.cost - cell.cost
-                elif S == None:
-                    grad[1] = cell.cost - N.cost
-                else:
-                    grad[1] = S.cost - N.cost
-                if (vector_length_squared(grad) > .0001):
-                    grad = vector_normalize(grad)
-                cell.gradient = grad
+                self.calculateOneGradient(cell)
 
     # given north south east and west cells (that may be nil), 
     def wavefrontUpdateValue(self, N, S, E, W, intrinsicCost, cell=None):
@@ -436,7 +458,7 @@ class GradientField:
                     rospy.loginfo("Both active lists are empty - no costs to calculate")
                     return
                 else:
-                    rospy.loginfo("Using the high cost list with threshold for high cost %f", self.costThresh)
+                    #rospy.loginfo("Using the high cost list with threshold for high cost %f", self.costThresh)
                 self.activeList = self.highCostList
                 self.highCostList = []
                 self.costThresh += COST_THRESH_INCREMENT
@@ -491,137 +513,3 @@ class GradientField:
             self.path.append(currPos)
         #rospy.loginfo("Found goal. Path is:")
         v.vizConnectedPoints(path, color=[0,0,1])
-
-    def calculateCostsOriginal(self, iterations = 70):
-        # start from the goals on the active list, and propagate the values from there
-        temp =[]
-        numPointsUpdated = 0
-        MAX_POINTS_UPDATED = 30000000000
-        for i in range(iterations):
-            self.outputCosts(i)
-            if numPointsUpdated > MAX_POINTS_UPDATED:
-                break 
-            
-            if len(self.activeList) == 0:
-                if len(self.highCostList) == 0:
-                    rospy.loginfo("Both active lists are empty - no costs to calculate")
-                    return
-                self.activeList = self.highCostList
-                self.highCostList = []
-                self.costThresh += COST_THRESH_INCREMENT
-            while self.activeList:
-                if numPointsUpdated > MAX_POINTS_UPDATED:
-                    break 
-
-                currentPoint = self.activeList.pop() #currentPoint is the point whose value we know, and which will be used to propagate values
-                
-                #calculate the neighbors of the point
-                neighbors = self.findNeighbors(currentPoint)
-                
-                #neighbors stores the neighbors of the point. 
-                #Now we have to find the minimum neighbors along N-S and E-W for each of these neighbors
-                for n in neighbors:
-                    numPointsUpdated += 1
-                    if numPointsUpdated > MAX_POINTS_UPDATED:
-                        break 
-        
-                    #find the minimum
-                    N = self.cellIsValid(n.xInd, n.yInd+1)
-                    S = self.cellIsValid(n.xInd, n.yInd-1)
-                    E = self.cellIsValid(n.xInd+1, n.yInd)
-                    W = self.cellIsValid(n.xInd-1, n.yInd)
-                    NS = None
-                    EW = None
-                    minPoint = None
-                    # North-South comparison
-                    if N != None:
-                        if S != None:
-                            # Case 1: Both are valid - find the minimum
-                            if N.cost <= S.cost:
-                                NS = N
-                            else:
-                                NS = S          
-                        else:
-                            # Case 2: N is valid, S is not - take N
-                            NS = N
-                    else:
-                        if S != None:
-                            # Case 3: S is valid, N is not - take S
-                            NS = S
-                       
-                    # East-West comparison
-                    if E != None:
-                        if W != None:
-                            # Case 1: Both are valid - find the minimum
-                            if E.cost <= W.cost:
-                                EW = E
-                            else:
-                                EW = W         
-                        else:
-                            # Case 2: E is valid, W is not - take E
-                            EW = E
-                    else:
-                        if W != None:
-                            # Case 3: W is valid, E is not - take W
-                            EW = W
-
-                    # Calculate the correct theta, based on NS and EW
-                    if NS != None:
-                        if EW != None:
-                            traj = [-1.0*NS.cost, EW.cost]
-                            if NS.cost <= EW.cost:
-                                minPoint = NS
-                            else:
-                                minPoint = EW
-                        else:
-                            traj = [1.0, 0.0]
-                            minPoint = NS
-                    else:
-                        if EW != None:
-                            traj = [0.0, 1.0]
-                            minPoint = EW
-                        else:
-                            rospy.loginfo("Error! Grid [%d][%d] at [%0.2f, %0.2f] has NO valid neighbors", n.xInd, n.yInd, n.x, n.y)
-                            continue
-
-                    line_origin = [minPoint.x, minPoint.y]
-                    line_trajectory = traj
-                    #dist = vector.lineDistanceToPoint([n.x, n.y], line_origin, line_trajectory)
-                    #update cost
-                    #newCost = minPoint.cost + dist*n.intrinsicVal
-                    #if newCost < 0:
-                    #    rospy.loginfo("Warning: found a negative cost")
-                    # alternatively use the Sethian method to propagate the wavefront
-                    newCost = self.wavefrontUpdateValue(N, S, E, W, n.intrinsicVal)
-                    if n.cost != None:
-                        if newCost < n.cost:
-                            n.cost = newCost
-                            rospy.loginfo("Grid point [%i, %i] cost => %f", n.xInd, n.yInd, n.cost)
-                            if n.cost < self.costThresh:
-                                temp.append(n)  # put onto active list
-                            else:
-                                self.highCostList.append(n)
-                            if n == self.startCell:
-                                rospy.loginfo("Updated starting point cost to %f", n.cost)
-                    else:
-                        n.cost = newCost
-                        rospy.loginfo("Grid point [%i, %i] cost => %f", n.xInd, n.yInd, n.cost)
-                        if n.cost < self.costThresh:
-                            temp.append(n)  # put onto active list
-                        else:
-                            self.highCostList.append(n)
-                        if n == self.startCell:
-                            rospy.loginfo("Updated starting point cost to %f", n.cost)
-                            
-                #end for
-            #end while
-            #add the temp list to the active list, since the values for all the entries in temp have been updated
-            self.activeList.extend(temp)
-            temp =[]
-            #if (i+1)%10 == 0:
-                #rospy.loginfo("iteration %d done",i+1)
-         #end iterations
-        rospy.loginfo("Cost calculation finished")
-        if self.localField:
-            self.localField.initLocalFromGlobal()
-
