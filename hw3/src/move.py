@@ -47,14 +47,10 @@ class MoveFromKeyboard:
     def getNextCommand(self,currPose):   
         rospy.loginfo("currPose is:(%f,%f,%f)",currPose.x,currPose.y,currPose.theta)
         nearestGridPoint = self.gradient.cellNearestXY(currPose.x, currPose.y) #returns a gradientMap value
-          
         newGrad = self.gradient.interpolateGradientAtXY(currPose.x,currPose.y)
         #newPose = vector_add([currPose.x,currPose.y], vector_scale(interpedGrad, self.gradient.stepSize))
         newTheta = math.atan2(newGrad[1],newGrad[0])
         rospy.loginfo("going to (%f)",newTheta)
-        
-       
-       
         goals = [[g.x, g.y] for g in self.gradient.goals]
         
         #keep turning without translation until we are in line with the destination
@@ -67,7 +63,7 @@ class MoveFromKeyboard:
         else:
             angVel = 0
             linVel = 0.1
-        if util.closeToOne([currPose.x,currPose.y], goals,0.5):
+        if util.closeToOne([currPose.x,currPose.y], goals,0.3):
             linVel = 0
             angVel = 0
             rospy.loginfo("reached goal");

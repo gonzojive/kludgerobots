@@ -15,7 +15,7 @@ from vector import *
 
 # Minimum values before we run the filter again
 minimumMovement = .03    # 30 mm - probably want to increase this when we have more samples
-minimumTurn = util.d2r(10)  # 10 degrees
+minimumTurn = util.d2r(4)  # 4 degrees
 
 
 class ParticleFilter(threading.Thread):
