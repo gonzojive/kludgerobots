@@ -127,7 +127,9 @@ class ParticleFilter(threading.Thread):
     # thread hits an error and unexpectedly quits. This is much safer.
     def run(self):
         import particleFilter
-        cProfile.run('particleFilter.profiledParticleFilter()', '/tmp/pfilterProfStats')
+        #cProfile.run('particleFilter.profiledParticleFilter()', '/tmp/pfilterProfStats')
+        particleFilter.profiledParticleFilter()
+        
 
     def mainLoop(self):
         while not rospy.is_shutdown():    # loop for the duration of the program
