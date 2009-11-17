@@ -40,8 +40,6 @@ class Part2():
         self._localGradients = None
         self.cellSpacing = 0.2
         
-        self.orientationDone = None
-        
         
     def robotPosition(self):
         return self._position
@@ -101,37 +99,8 @@ class Part2():
             self._localGradients.updatePath(self._pFilter.poseAverage)
             self._pFilter.poseAverageLock.release()
             
-    def reduceFilter(self):
-        #spin a few times to reduce particle cloud and get well-localized
-        rate = rospy.Rate(10)
-        (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', rospy.Time(0))
-
-        for i in xrange(0,10):
-            self.update(trans, rot)
-            pass
-            self.velPublish.publish(Twist(Vector3(0.1,0,0),Vector3(0,0,0)))
-            rate.sleep()
-        for i in xrange(0, 40): 
-            self.update(trans, rot)
-            pass
-            self.velPublish.publish(Twist(Vector3(0,0,0),Vector3(0,0,0.1)))
-            rate.sleep()        
-        for i in xrange(0, 80): 
-            self.update(trans, rot)
-            pass
-            self.velPublish.publish(Twist(Vector3(0,0,0),Vector3(0,0,-0.1)))
-            rate.sleep()
-        for i in xrange(0, 40): 
-            self.update(trans, rot)
-            pass
-            self.velPublish.publish(Twist(Vector3(0,0,0),Vector3(0,0,0.1)))
-            rate.sleep()
-
-        for i in xrange(0,10):
-            self.update(trans, rot)
-            pass
-            self.velPublish.publish(Twist(Vector3(-0.1,0,0),Vector3(0,0,0)))
-            rate.sleep()
+            
+    
         
     def initNode(self):
         rospy.init_node('kludge3')
@@ -157,22 +126,24 @@ class Part2():
 
         self.initGradients()
         self.initFilter()
-
+        goalIndex = 0       
         # while we are not shutdown by the ROS, keep updating
         while not rospy.is_shutdown():
             try:
                 (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', rospy.Time(0))
                 
                 #send commands                
-                if self._gradients.initializationDone:
-                    #if not self.orientationDone:
-                     #   rospy.loginfo("doing orientation")
-                      #  self.reduceFilter()
-                       # self.orientationDone = 1
+                if self._gradients.initializationDone:  
                     self._pFilter.poseAverageLock.acquire()
                     newPose = copy.deepcopy(self._pFilter.poseAverage)
                     self._pFilter.poseAverageLock.release()
-                    [linVel,angVel] = self._move.getNextCommand(newPose)
+                    [linVel,angVel] = self._move.getNextCommand(newPose,goalIndex)
+                    if linVel == 0 and angVel == 0 :
+                        rospy.loginfo("reached goal: %d",goalIndex)
+                        if len(self._gradients.goals) > goalIndex +1:
+                            goalIndex = goalIndex+1;
+                        self._gradients.calculateCosts(70,goalIndex)
+                        self._gradients.displayGradient(self._visualizer)
                     #publish commands if we haven't reached goal. else don't publish anything
                     self.velPublish.publish(Twist(Vector3(linVel,0,0),Vector3(0,0,angVel)))
                     

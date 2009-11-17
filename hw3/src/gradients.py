@@ -37,10 +37,8 @@ class MapPoint:
         self.cost = None
         
 
-class Goals:
-    def __init__(self,x,y):
-        self.x = x;
-        self.y = y;
+
+
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
     def __init__(self, cellSpacing, distanceMap, initialPose):
@@ -56,6 +54,7 @@ class GradientField:
         self.localField = None
         self.globalField = None
         self.localObstacles = None
+        self.visitedGoals = []
         if distanceMap:
             self.mapWidth = int(distanceMap.fWidth)
             self.mapHeight = int(distanceMap.fHeight)
@@ -149,8 +148,8 @@ class GradientField:
         for g in goals:
             rospy.loginfo("goal is (%0.2f,%0.2f)",g.x,g.y)
             cell = self.cellNearestXY(g.x, g.y)
-            cell.cost = 0
-            self.activeList.append(cell)
+            #cell.cost = 0
+            #self.activeList.append(cell)
             self.goals.append(cell)
         self.startCell = self.cellNearestXY(self.startPosition.x, self.startPosition.y)
         self.costThresh = COST_THRESH_INITIAL
@@ -370,9 +369,25 @@ class GradientField:
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
     #uses LPN algorithm, as in paper
-    def calculateCosts(self, iterations = 70):
+    def calculateCosts(self, iterations = 70,goalIndex = 0):
         # start from the goals on the active list, and propagate the values from there
         temp =[]
+        #add the goal to the active list only once and set the gradientMap to 0
+        if self.visitedGoals.count(goalIndex) == 0:
+            rospy.loginfo("goal is %d",goalIndex);    
+            #reset the whole gradient map    
+            for row in self.gradientMap:
+                for point in row:
+                    point.cost = None
+                    point.gradient = None    
+            #visited goals shouldn't have a 0 cost anymore
+            for i in self.visitedGoals:
+                self.goals[i].cost = None
+                self.goals[i].gradient = None
+            self.goals[goalIndex].cost =0
+            self.activeList.append(self.goals[goalIndex])            
+            self.visitedGoals.append(goalIndex)
+            
         for i in range(iterations):
             if len(self.activeList) == 0:
                 if len(self.highCostList) == 0:
@@ -402,7 +417,7 @@ class GradientField:
                     if N != None:
                         if S != None:
                             # Case 1: Both are valid - find the minimum
-                            if N.cost < S.cost:
+                            if N.cost <= S.cost:
                                 NS = N
                             else:
                                 NS = S          
@@ -418,7 +433,7 @@ class GradientField:
                     if E != None:
                         if W != None:
                             # Case 1: Both are valid - find the minimum
-                            if E.cost < W.cost:
+                            if E.cost <= W.cost:
                                 EW = E
                             else:
                                 EW = W         
@@ -434,7 +449,7 @@ class GradientField:
                     if NS != None:
                         if EW != None:
                             traj = [-1.0*NS.cost, EW.cost]
-                            if NS.cost < EW.cost:
+                            if NS.cost <= EW.cost:
                                 minPoint = NS
                             else:
                                 minPoint = EW
