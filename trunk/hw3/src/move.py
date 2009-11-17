@@ -15,9 +15,11 @@ class MoveFromKeyboard:
         self.command = None
         self.repeatCommand = 0
         self.gradient = None
+        self.localGradient = None
 
-    def setGradientMap(self, gmap):
+    def setGradientMaps(self, gmap, local):
         self.gradient = gmap
+        self.localGradient = local
         
     # this is called by the main update loop of the program.  It uses the robot global compass
     # and laser interpreter to figure out where the obstacles are and move around
@@ -100,7 +102,7 @@ class MoveFromKeyboard:
         elif cmd[0] == "move" or cmd[0] == "m":
             rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[1], cmd[2])
             self.command = [float(cmd[1]), float(cmd[2])]
-            if len(cmd) >= 3:
+            if len(cmd) >= 4:
                 self.repeatCommand = int(cmd[3])
             else:
                 self.repeatCommand = 0

@@ -34,6 +34,7 @@ class Part2():
         self._motionErr = motionModel.MotionErrorModel(0.1, 0.1, 0.1, 0.1, 0.1, 0.1)
         self.initialPose = pose.Pose(34.0, 46.0, 0.0)
         self._gradients = None
+        self._localGradients = None
         self.cellSpacing = 0.2
 
     def robotPosition(self):
@@ -61,7 +62,11 @@ class Part2():
 
     def initGradients(self):
         self._gradients = gradients.GradientField(self.cellSpacing, self.mapModel, self.initialPose)
-        self._move.setGradientMap(self._gradients)
+        self._localGradients = gradients.GradientField(self.cellSpacing, None, None)
+        self._move.setGradientMaps(self._gradients, self._localGradients)
+        self._gradients.setLocal(self._localGradients)
+        self._localGradients.setGlobal(self._gradients)
+        self._localGradients.initLocalFromGlobal()
 
     def initSubscriptions(self):
         # subscribe to laser readings
@@ -80,7 +85,11 @@ class Part2():
         self.robotPosition().odomReadingNew(trans, rot)
         self._move.publishNextMovement()
         self._pFilter.receiveOdom(self.robotPosition().position())
-        self._pFilter.mapModel.broadcast()
+        #self._pFilter.mapModel.broadcast()
+        if self._pFilter.laserReadingsChanged():
+            self._pFilter.laserInMapLock.acquire()
+            self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
+            self._pFilter.laserInMapLock.release()
         
     def initNode(self):
         rospy.init_node('kludge3')
