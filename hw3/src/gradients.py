@@ -7,6 +7,7 @@ import vector
 from vector import *
 import viz
 from numpy import allclose
+import copy
 
 ROBOT_RADIUS = 0.15
 DISTANCE_CHANGE_POINT = 1.0
@@ -19,6 +20,8 @@ STEP_SIZE = .1
 
 COST_THRESH_INITIAL = 5.0
 COST_THRESH_INCREMENT = 5.0
+
+NEW_OBSTACLE_THRESH = 5.0
 
 #MapPoint is a structure to hold the gradient field values for all points in the map. gradient is the direction of the gradient at each (x,y) point. intrinsicVal is the distance to the nearest obstacle and goalVal is the distance to the goal
 class MapPoint:
@@ -38,35 +41,44 @@ class Goals:
         self.y = y;
 #GradientField is a class which creates and updates the gradient field for the map. It is generalized to perform global and local gradient updates
 class GradientField:
-    def __init__(self, cellSpacing, distanceMap, initialPose = None, laserReadings = None):
+    def __init__(self, cellSpacing, distanceMap, initialPose):
         # constants for calculating the intrinsic (obstacle distance) cost
-        self.robotRadius = ROBOT_RADIUS
-        self.maximumDistance = MAX_OBSTACLE_DISTANCE
-        self.changeDistance = DISTANCE_CHANGE_POINT
-        self.intrinsicMaxValue = MAX_INTRINSIC
-        self.intrinsicStartValue = START_INTRINSIC
-        self.intrinsicChangeValue = MID_INTRINSIC
-        self.intrinsicEndValue = END_INTRINSIC
-        self.shallowSlope = (self.intrinsicChangeValue - self.intrinsicStartValue) / (self.changeDistance - self.robotRadius)
-        self.steepSlope = (self.intrinsicEndValue - self.intrinsicChangeValue) / (self.maximumDistance - self.changeDistance)
+        self.shallowSlope = (MID_INTRINSIC - START_INTRINSIC) / (DISTANCE_CHANGE_POINT - ROBOT_RADIUS)
+        self.steepSlope = (END_INTRINSIC - MID_INTRINSIC) / (MAX_OBSTACLE_DISTANCE - DISTANCE_CHANGE_POINT)
         # data members
-        self.mapWidth = int(distanceMap.fWidth)
-        self.mapHeight = int(distanceMap.fHeight)
         self.spacing = cellSpacing
-        self.gridWidth = int(self.mapWidth / cellSpacing)
-        self.gridHeight = int(self.mapHeight / cellSpacing)
         self.gradientMap =  []
-        self.initializeGradientMap(distanceMap)
-        self.startPosition = initialPose
-        self.stepSize = STEP_SIZE #1 cm step size for now
+        self.stepSize = STEP_SIZE
         self.goals = []
+        self.localField = None
+        self.globalField = None
+        if distanceMap:
+            self.mapWidth = int(distanceMap.fWidth)
+            self.mapHeight = int(distanceMap.fHeight)
+            self.gridWidth = int(self.mapWidth / cellSpacing)
+            self.gridHeight = int(self.mapHeight / cellSpacing)
+            self.initializeGradientMap(distanceMap)
+            self.startPosition = initialPose
 
-        #goals = [Goals(43.366,46.017),Goals(42.9,44.64),Goals(17.61,44.46)]        
-        #self.setGoals(goals)
+    def setGlobal(self, g):
+        self.globalField = g
+
+    def setLocal(self, l):
+        self.localField = l
+
+    def initLocalFromGlobal(self):
+        self.mapWidth = self.globalField.mapWidth
+        self.mapHeight = self.globalField.mapHeight
+        self.gridWidth = self.globalField.gridWidth
+        self.gridHeight = self.globalField.gridHeight
+        self.gradientMap = copy.deepcopy(self.globalField.gradientMap)
+
+
+    def newLaserReading(self, laserPoints):
+        for p in laserPoints:
+            if self.cellNearestXY(p[0], p[1]).intrinsicVal < NEW_OBSTACLE_THRESH:
+                rospy.loginfo("Found new obstacle at (%0.2f, %0.2f)", p[0], p[1])
         
-        #rospy.loginfo("done with intrinsic costs.Starting LPN algo")
-        #self.calculateCosts()
-
 
     def setGoals(self, goals):
         if not self.startPosition:
@@ -126,7 +138,7 @@ class GradientField:
                 if distanceMap.pointInBounds([curX, curY]):
                     mp.intrinsicVal = self.intrinsicFunc(distanceMap.distanceFromObstacleAtPoint([curX, curY]))
                 else:
-                    mp.intrinsicVal = self.intrinsicMaxValue
+                    mp.intrinsicVal = MAX_INTRINSIC
                 curCol.append( mp )
                 curY += self.spacing
             curX += self.spacing
@@ -190,14 +202,14 @@ class GradientField:
     # steep slope from there until the maximum distance
     # stays at end value (1.0) past there
     def intrinsicFunc(self, distance):
-        if distance < self.robotRadius:
-            return self.intrinsicMaxValue
-        elif distance < self.changeDistance:
-            return self.intrinsicStartValue + (self.shallowSlope * (distance - self.robotRadius))
-        elif distance < self.maximumDistance:
-            return self.intrinsicChangeValue + (self.steepSlope * (distance - self.changeDistance))
+        if distance < ROBOT_RADIUS:
+            return MAX_INTRINSIC
+        elif distance < DISTANCE_CHANGE_POINT:
+            return START_INTRINSIC + (self.shallowSlope * (distance - ROBOT_RADIUS))
+        elif distance < MAX_OBSTACLE_DISTANCE:
+            return MID_INTRINSIC + (self.steepSlope * (distance - DISTANCE_CHANGE_POINT))
         else:
-            return self.intrinsicEndValue
+            return END_INTRINSIC
 
     
     #function to find the 4 nearest neighbors
@@ -291,9 +303,9 @@ class GradientField:
     # assumes the active list has been set, and goal costs have been set to 0
     #uses LPN algorithm, as in paper
     def calculateCosts(self, iterations = 70):
-         # start from the goals on the active list, and propagate the values from there
-         temp =[]
-         for i in range(iterations):
+        # start from the goals on the active list, and propagate the values from there
+        temp =[]
+        for i in range(iterations):
             if len(self.activeList) == 0:
                 if len(self.highCostList) == 0:
                     rospy.loginfo("Both active lists are empty - no costs to calculate")
@@ -374,9 +386,10 @@ class GradientField:
                     dist = vector.lineDistanceToPoint([n.x, n.y], line_origin, line_trajectory)
                     #update cost
                     newCost = minPoint.cost + dist*n.intrinsicVal
+                    if newCost < 0:
+                        rospy.loginfo("Warning: found a negative cost")
                     # alternatively use the Sethian method to propagate the wavefront
                     #newCost = self.wavefrontUpdateValue(N, S, E, W) + n.intrinsicVal
-                    
                     if n.cost:
                         if newCost < n.cost:
                             n.cost = newCost
@@ -399,15 +412,17 @@ class GradientField:
             #add the temp list to the active list, since the values for all the entries in temp have been updated
             self.activeList.extend(temp)
             temp =[]
-            if (i+1)%10 == 0:
-                rospy.loginfo("iteration %d done",i+1)
+            #if (i+1)%10 == 0:
+                #rospy.loginfo("iteration %d done",i+1)
          #end iterations
-         rospy.loginfo("Cost calculation finished")
+        rospy.loginfo("Cost calculation finished")
+        if self.localField:
+            self.localField.initLocalFromGlobal()
        
 
-    def findPathGivenGradient(self, v):
+    def findPathGivenGradient(self, v, position = None):
         path =[]
-        currPos = [self.startPosition.x, self.startPosition.y]
+        currPos = position or [self.startPosition.x, self.startPosition.y]
         goals = [[g.x, g.y] for g in self.goals]
         rospy.loginfo("Finding path to nearest goal from %0.2f,%0.2f", currPos[0], currPos[1])
         maxPath = 200
@@ -416,8 +431,7 @@ class GradientField:
             #rospy.loginfo("path gradient: (%.2f, %.2f) of len %f", interpedGrad[0], interpedGrad[1], vector_length(interpedGrad))
             currPos = vector_add(currPos, vector_scale(interpedGrad, self.stepSize))
             path.append(currPos)
-        rospy.loginfo("Found goal. Path is:")
+        #rospy.loginfo("Found goal. Path is:")
         v.vizConnectedPoints(path, color=[0,0,1])
-        for p in path:
-            rospy.loginfo("  %0.2f,%0.2f",p[0],p[1])
-
+        #for p in path:
+            #rospy.loginfo("  %0.2f,%0.2f",p[0],p[1])

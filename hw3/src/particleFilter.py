@@ -40,14 +40,16 @@ class ParticleFilter(threading.Thread):
         self.numDesiredPoses = 500 # used during resampling
         self.poseSet = pose.PoseSet(viz, self.numDesiredPoses)    # 50 poses just for testing purposes
         self.mapModel = mm
-        self.poseSet.poses = [p for p in self.mapModel.generatePosesOverWholeMap(self.numDesiredPoses)]
-        #self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )
+        #self.poseSet.poses = [p for p in self.mapModel.generatePosesOverWholeMap(self.numDesiredPoses)]
+        self.poseSet.initializeGaussian( [initialPose.x, .5], [initialPose.y, 0.5], [initialPose.theta, math.pi/9.0] )
         self.updatePoseAverage()
         self.startTime = rospy.Time.now()
         self.viz = viz
         self.full = full    # whether to do the full filter or just the prediction step
         self.numBeamVectors = 10
-
+        self.laserInMapLock = threading.Lock()
+        self.laserInMap = []
+        self.laserInMapFlag = False
 
 
     # displayPoses(): draws the current poseSet to rviz
@@ -58,8 +60,20 @@ class ParticleFilter(threading.Thread):
 
     def displayLasers(self, laserBeamVectors):
         # visualization of points in map
-        debugPoints = [self.poseAverage.inMapFrame(vLaserBeam) for vLaserBeam in laserBeamVectors]
-        self.viz.vizPoints(debugPoints, 1000)
+        self.laserInMapLock.acquire()   # <-- grab lock -->
+        self.laserInMap = [self.poseAverage.inMapFrame(vLaserBeam) for vLaserBeam in laserBeamVectors]
+        self.laserInMapFlag = True
+        self.laserInMapLock.release()   # <-- release -->
+        self.viz.vizPoints(self.laserInMap, 1000)
+
+    # laserReadingsChanged()
+    # if the laser readings changed recently, return true (and reset the flag)
+    # otherwise, return false
+    def laserReadingsChanged(self):
+        if self.laserInMapFlag:
+            self.laserInMapFlag = False
+            return True
+        return False
 
     # given a point in the robot frame, returns a point in the map frame
     def robotToMapFrame(self, pt):
