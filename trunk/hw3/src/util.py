@@ -69,5 +69,11 @@ def smallestAngleDifference(a1, a2):
 def close(a, b, maxDist = 0.01):
     absDiff = [abs(v[1]-v[0]) for v in zip(a, b)]
     return len(filter(lambda x: x > maxDist, absDiff)) == 0
+
+def closeToOne(a, bList, maxDist = 0.01):
+    for b in bList:
+        if close(a, b, maxDist):
+            return True
+    return False
     
     

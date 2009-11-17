@@ -83,7 +83,7 @@ class MoveFromKeyboard:
             elif cmd[1] == "gradient" or cmd[1] == "grad" or cmd[1] == "g":
                 self.gradient.displayGradient(self.viz)
         elif cmd[0] == "showPath":
-            self.gradient.findPathGivenGradient(int(cmd[1]), self.viz)
+            self.gradient.findPathGivenGradient(self.viz)
         elif cmd[0] == "test":
             if len(cmd) == 1 or cmd[1] == "1":
                 rospy.loginfo("Setting goal (40, 45)")
@@ -95,15 +95,17 @@ class MoveFromKeyboard:
                 rospy.loginfo("Displaying gradient field")
                 self.gradient.displayGradient(self.viz)
                 rospy.loginfo("Calculating optimal path")
-                self.gradient.findPathGivenGradient(0, self.viz)
+                self.gradient.findPathGivenGradient(self.viz)
                 rospy.loginfo("Done with test")
-        else:
-            rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[0], cmd[1])
-            self.command = [float(cmd[0]), float(cmd[1])]
+        elif cmd[0] == "move" or cmd[0] == "m":
+            rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[1], cmd[2])
+            self.command = [float(cmd[1]), float(cmd[2])]
             if len(cmd) >= 3:
-                self.repeatCommand = int(cmd[2])
+                self.repeatCommand = int(cmd[3])
             else:
                 self.repeatCommand = 0
+        else:
+            rospy.loginfo("Not a valid command")
 
 if __name__ == '__main__':
     m = MoveFromKeyboard(None)

@@ -372,20 +372,18 @@ class GradientField:
          rospy.loginfo("Cost calculation finished")
        
 
-    def findPathGivenGradient(self, goalPosition, v):
+    def findPathGivenGradient(self, v):
         path =[]
         currPos = [self.startPosition.x, self.startPosition.y]
-        goal = self.goals[goalPosition]
-        rospy.loginfo("Finding path to goal from %0.2f,%0.2f => %0.2f,%0.2f", 
-                       currPos[0], currPos[1], goal.x, goal.y)
+        goals = [[g.x, g.y] for g in self.goals]
+        rospy.loginfo("Finding path to nearest goal from %0.2f,%0.2f", currPos[0], currPos[1])
         maxPath = 200
-        while len(path) < maxPath and not util.close(currPos, [goal.x, goal.y]):
+        while len(path) < maxPath and not util.closeToOne(currPos, goals):
             interpedGrad = self.interpolateGradientAtXY(currPos[0],currPos[1])
-            rospy.loginfo("path gradient: (%.2f, %.2f) of len %f", interpedGrad[0], interpedGrad[1], vector_length(interpedGrad))
-            currPos = vector_add(currPos,
-                                  vector_scale(interpedGrad, self.stepSize))
+            #rospy.loginfo("path gradient: (%.2f, %.2f) of len %f", interpedGrad[0], interpedGrad[1], vector_length(interpedGrad))
+            currPos = vector_add(currPos, vector_scale(interpedGrad, self.stepSize))
             path.append(currPos)
-        rospy.loginfo("found goal. path is:")
+        rospy.loginfo("Found goal. Path is:")
         v.vizConnectedPoints(path, color=[0,0,1])
         for p in path:
-            rospy.loginfo("%0.2f,%0.2f",p[0],p[1])
+            rospy.loginfo("  %0.2f,%0.2f",p[0],p[1])
