@@ -131,7 +131,12 @@ class MoveFromKeyboard:
                     self.gradient.displayImageOfCosts()
                 else:
                     self.gradient.displayImageOfCosts(int(cmd[2]))
-            elif cmd[1] == "gradient" or cmd[1] == "grad" or cmd[1] == "g": 
+            elif cmd[1] == "cost2":
+                if len(cmd) == 2:
+                    self.gradient.displayImageOfCosts2()
+                else:
+                    self.gradient.displayImageOfCosts(int(cmd[2]))
+            elif cmd[1] == "gradient" or cmd[1] == "grad" or cmd[1] == "g":
                 self.gradient.displayGradient(self.viz)
             elif cmd[1] == "local":
                 if cmd[2] == "intrinsic":
@@ -151,6 +156,8 @@ class MoveFromKeyboard:
             if len(cmd) > 1:
                 if cmd[1] == "local":
                     lf.localGradient.findPathGivenGradient(self.viz)
+        elif cmd[0] == "sanity":
+            self.gradient.sanityCheck()
         elif cmd[0] == "test":
             if len(cmd) == 1 or cmd[1] == "1":
                 rospy.loginfo("Setting goal (40, 45)")

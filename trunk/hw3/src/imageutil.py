@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 
+import numpy
+import scipy.io
     
 # outputs a grayscale image, scaling the data according to its maximum
 def showImageRowCol(data, width, height):
@@ -17,6 +19,24 @@ def showImageRowCol(data, width, height):
         dataScaled = [0] * len(data)
     im.putdata(dataScaled)
     im.show()
+
+def showImageRowCol2(data, width, height):
+    im = PIL.Image.new('L', (width,height))  # 'P' for palettized
+    maxData = max(data)
+    minData = min(data)
+    if maxData > 0:
+        dataScaled = [int(float(d) / float(maxData - minData) * 255.0) for d in data]
+    else:
+        dataScaled = [0] * len(data)
+    im.putdata(dataScaled)
+    im.show()
+    outputMatrix(data, width, height)
+
+def outputMatrix(data, width, height, filename='/tmp/arrdata.mat', i=""):
+    # output the matlab matrix
+    arr = numpy.array(data)
+    arr = arr.reshape((height, width))
+    scipy.io.savemat(filename, mdict={"arr%i" % i: arr})
 
 def showMapImageRowCol(data, width, height):
     im = PIL.Image.new('L', (width,height))  # 'P' for palettized
