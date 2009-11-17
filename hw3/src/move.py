@@ -52,6 +52,8 @@ class MoveFromKeyboard:
         newTheta = math.atan2(newGrad[1],newGrad[0])
         #rospy.loginfo("going to (%f)",newTheta)
         goals = [[g.x, g.y] for g in self.goals.goalList()]
+        if len(goals) == 0:
+            return [0, 0]
         poseToGrad = util.normalizeAngle360(currPose.theta - newTheta)
         gradToPose = util.normalizeAngle360(newTheta - currPose.theta)
         thetaDiff = min(poseToGrad, gradToPose)
@@ -82,16 +84,16 @@ class MoveFromKeyboard:
             i = 0
             # find the index of the goal we're on
             for i in range(len(goals)):
-                if util.close([currPose.x, currPose.y], goals[i]):
+                if util.close([currPose.x, currPose.y], goals[i], 0.2):
                     break
             linVel = 0
             angVel = 0
-            rospy.loginfo("Reached goal at (%0.2f, %0.2f)", self.goals.goalList()[i][0], self.goals.goalList()[i][1])
+            rospy.loginfo("Reached goal at (%0.2f, %0.2f)", self.goals.goalList()[i].x, self.goals.goalList()[i].y)
             self.goals.deleteGoal(i)
             self.gradient.setStartPosition(currPose.x, currPose.y)
             self.gradient.setGoals(self.goals.goalList())
             self.gradient.calculateCosts(70)
-            self.gradient.displayGradient(self._visualizer)
+            self.gradient.displayGradient(self.viz)
         rospy.loginfo("sending linearVel = %f,angVel =%f",linVel,angVel)
         return [linVel,angVel]
             
