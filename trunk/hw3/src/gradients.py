@@ -9,6 +9,8 @@ import viz
 from numpy import allclose
 import copy
 
+
+
 ROBOT_RADIUS = 0.15
 DISTANCE_CHANGE_POINT = 1.0
 MAX_OBSTACLE_DISTANCE = 1.2
@@ -50,6 +52,11 @@ class GradientField:
         self.gradientMap =  []
         self.stepSize = STEP_SIZE
         self.goals = []
+
+        self.initializationDone = None
+        
+        
+
         self.localField = None
         self.globalField = None
         if distanceMap:
@@ -59,6 +66,7 @@ class GradientField:
             self.gridHeight = int(self.mapHeight / cellSpacing)
             self.initializeGradientMap(distanceMap)
             self.startPosition = initialPose
+
 
     def setGlobal(self, g):
         self.globalField = g
@@ -179,6 +187,7 @@ class GradientField:
                         yield cell
 
         v.vizArrows([absVectorAtCell(cell) for cell in allCells()])
+        self.initializationDone = 1
 
 
     def displayImageOfIntrinsics(self, cutoff = 100.0):
@@ -421,7 +430,7 @@ class GradientField:
        
 
     def findPathGivenGradient(self, v, position = None):
-        path =[]
+        self.path =[]
         currPos = position or [self.startPosition.x, self.startPosition.y]
         goals = [[g.x, g.y] for g in self.goals]
         rospy.loginfo("Finding path to nearest goal from %0.2f,%0.2f", currPos[0], currPos[1])
@@ -430,8 +439,7 @@ class GradientField:
             interpedGrad = self.interpolateGradientAtXY(currPos[0],currPos[1])
             #rospy.loginfo("path gradient: (%.2f, %.2f) of len %f", interpedGrad[0], interpedGrad[1], vector_length(interpedGrad))
             currPos = vector_add(currPos, vector_scale(interpedGrad, self.stepSize))
-            path.append(currPos)
+            self.path.append(currPos)
         #rospy.loginfo("Found goal. Path is:")
         v.vizConnectedPoints(path, color=[0,0,1])
-        #for p in path:
-            #rospy.loginfo("  %0.2f,%0.2f",p[0],p[1])
+

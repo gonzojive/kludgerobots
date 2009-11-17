@@ -19,6 +19,8 @@ import goal
 import gradients
 
 from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Vector3
 
 class Part2():
     def __init__(self):
@@ -36,7 +38,8 @@ class Part2():
         self._gradients = None
         self._localGradients = None
         self.cellSpacing = 0.2
-
+        
+        
     def robotPosition(self):
         return self._position
 
@@ -69,6 +72,7 @@ class Part2():
         self._localGradients.initLocalFromGlobal()
 
     def initSubscriptions(self):
+        self.velPublish = rospy.Publisher("commands", Twist) # publish to "commands"
         # subscribe to laser readings
         def laserCallback(reading):
             self.laserInterpreter().laserReadingNew(reading)
@@ -90,6 +94,9 @@ class Part2():
             self._pFilter.laserInMapLock.acquire()
             self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
             self._pFilter.laserInMapLock.release()
+        
+    
+        
         
     def initNode(self):
         rospy.init_node('kludge3')
@@ -120,6 +127,12 @@ class Part2():
         while not rospy.is_shutdown():
             try:
                 (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', rospy.Time(0))
+                #send commands
+                if self._gradients.initializationDone:
+                    [linVel,angVel] = self._move.getNextCommand(self._pFilter.poseAverage)
+                    #publish commands if we haven't reached goal. else don't publish anything
+                    self.velPublish.publish(Twist(Vector3(linVel,0,0),Vector3(0,0,angVel)))
+                    
             except (tf.LookupException, tf.ConnectivityException):
                 continue
             
