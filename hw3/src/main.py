@@ -88,16 +88,16 @@ class Part2():
     # perform an update when we receive new info from the odometer or whatever
     def update(self, trans, rot):
         self.robotPosition().odomReadingNew(trans, rot)
-        self._move.publishNextMovement()
         self._pFilter.receiveOdom(self.robotPosition().position())
         #self._pFilter.mapModel.broadcast()
-        #if self._pFilter.laserReadingsChanged():
-            #self._pFilter.laserInMapLock.acquire()
-            #self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
-            #self._pFilter.laserInMapLock.release()
+        if self._pFilter.laserReadingsChanged():
+            self._pFilter.laserInMapLock.acquire()
+            self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
+            self._pFilter.laserInMapLock.release()
             #self._pFilter.poseAverageLock.acquire()
             #self._localGradients.updatePath(self._pFilter.poseAverage)
             #self._pFilter.poseAverageLock.release()
+        self._move.publishNextMovement()
             
             
     
@@ -130,20 +130,18 @@ class Part2():
         while not rospy.is_shutdown():
             try:
                 (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', rospy.Time(0))
-                
-                #send commands                
-                if self._gradients.initializationDone:  
-                    self._pFilter.poseAverageLock.acquire()
-                    newPose = copy.deepcopy(self._pFilter.poseAverage)
-                    self._pFilter.poseAverageLock.release()
-                    [linVel,angVel] = self._move.getNextCommand(newPose)
-                    #publish commands if we haven't reached goal. else don't publish anything
-                    self.velPublish.publish(Twist(Vector3(linVel,0,0),Vector3(0,0,angVel)))
-                    
             except (tf.LookupException, tf.ConnectivityException):
                 continue
             
             self.update(trans, rot)
+            #send commands                
+            if self._gradients.initializationDone:  
+                self._pFilter.poseAverageLock.acquire()
+                newPose = copy.deepcopy(self._pFilter.poseAverage)
+                self._pFilter.poseAverageLock.release()
+                [linVel,angVel] = self._move.getNextCommand(newPose)
+                #publish commands if we haven't reached goal. else don't publish anything
+                self.velPublish.publish(Twist(Vector3(linVel,0,0),Vector3(0,0,angVel)))
             pass    # give another thread a chance to run
             #rate.sleep()
 
