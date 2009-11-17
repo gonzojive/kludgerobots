@@ -373,9 +373,9 @@ class GradientField:
                     line_trajectory = traj
                     dist = vector.lineDistanceToPoint([n.x, n.y], line_origin, line_trajectory)
                     #update cost
-                    #newCost = minPoint.cost + dist*n.intrinsicVal
+                    newCost = minPoint.cost + dist*n.intrinsicVal
                     # alternatively use the Sethian method to propagate the wavefront
-                    newCost = self.wavefrontUpdateValue(N, S, E, W) + n.intrinsicVal
+                    #newCost = self.wavefrontUpdateValue(N, S, E, W) + n.intrinsicVal
                     
                     if n.cost:
                         if newCost < n.cost:
