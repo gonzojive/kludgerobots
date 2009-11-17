@@ -66,6 +66,14 @@ def smallestAngleDifference(a1, a2):
     d2 = normalizeAngle360(a2 - a1)
     return min(d1, d2)
 
+# returns the two solution to the quadratic equation for ax^2 + bx + c = 0,
+# including imaginaries.
+def quadraticRoots(a, b, c):
+  discriminant = b*b - 4.0 * a * c
+  sqrt_discriminant = math.sqrt(discriminant) if discriminant >= 0 else complex(0, math.sqrt(-1.0*discriminant))
+  return [ (-b + sqrt_discriminant) / (2.0 * a) ,
+           (-b - sqrt_discriminant) / (2.0 * a) ]
+
 def close(a, b, maxDist = 0.01):
     absDiff = [abs(v[1]-v[0]) for v in zip(a, b)]
     return len(filter(lambda x: x > maxDist, absDiff)) == 0
@@ -76,4 +84,4 @@ def closeToOne(a, bList, maxDist = 0.01):
             return True
     return False
     
-    
+
