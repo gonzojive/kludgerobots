@@ -44,16 +44,14 @@ class MoveFromKeyboard:
         if r == [sys.stdin]:
             return raw_input()
             
-    def getNextCommand(self,currPose,goalIndex):   
+    def getNextCommand(self,currPose):   
         #rospy.loginfo("currPose is:(%f,%f,%f)",currPose.x,currPose.y,currPose.theta)
         nearestGridPoint = self.gradient.cellNearestXY(currPose.x, currPose.y) #returns a gradientMap value
         newGrad = self.gradient.interpolateGradientAtXY(currPose.x,currPose.y)
         #newPose = vector_add([currPose.x,currPose.y], vector_scale(interpedGrad, self.gradient.stepSize))
         newTheta = math.atan2(newGrad[1],newGrad[0])
         #rospy.loginfo("going to (%f)",newTheta)
-        goals = [[g.x, g.y] for g in self.gradient.goals]
-        
-        #keep turning without translation until we are in line with the destination
+        goals = [[g.x, g.y] for g in self.goals.goalList()]
         poseToGrad = util.normalizeAngle360(currPose.theta - newTheta)
         gradToPose = util.normalizeAngle360(newTheta - currPose.theta)
         thetaDiff = min(poseToGrad, gradToPose)
@@ -78,12 +76,22 @@ class MoveFromKeyboard:
         else:
             angVel = 0.0
             linVel = 0.3
-        if util.close([currPose.x,currPose.y], goals[goalIndex], 1.0):
+        if util.closeToOne([currPose.x,currPose.y], goals, 1.0):
             linVel = linVel / 2.0
-        if util.close([currPose.x,currPose.y], goals[goalIndex], 0.2):
+        if util.closeToOne([currPose.x,currPose.y], goals, 0.2):
+            i = 0
+            # find the index of the goal we're on
+            for i in range(len(goals)):
+                if util.close([currPose.x, currPose.y], goals[i]):
+                    break
             linVel = 0
             angVel = 0
-            rospy.loginfo("reached goal");
+            rospy.loginfo("Reached goal at (%0.2f, %0.2f)", self.goals.goalList()[i][0], self.goals.goalList()[i][1])
+            self.goals.deleteGoal(i)
+            self.gradient.setStartPosition(currPose.x, currPose.y)
+            self.gradient.setGoals(self.goals.goalList())
+            self.gradient.calculateCosts(70)
+            self.gradient.displayGradient(self._visualizer)
         rospy.loginfo("sending linearVel = %f,angVel =%f",linVel,angVel)
         return [linVel,angVel]
             

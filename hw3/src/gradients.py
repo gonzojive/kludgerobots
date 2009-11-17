@@ -8,6 +8,7 @@ from vector import *
 import viz
 from numpy import allclose
 import copy
+import pose
 
 
 
@@ -54,7 +55,6 @@ class GradientField:
         self.localField = None
         self.globalField = None
         self.localObstacles = None
-        self.visitedGoals = []
         if distanceMap:
             self.mapWidth = int(distanceMap.fWidth)
             self.mapHeight = int(distanceMap.fHeight)
@@ -134,7 +134,10 @@ class GradientField:
         if not self.foundStartPosition():
             self.calculateCosts(30)
         self.calculateGradients()
-        
+
+    def setStartPosition(self, x, y):
+        self.startPosition = pose.Pose(x, y)
+
 
     def setGoals(self, goals):
         if not self.startPosition:
@@ -145,11 +148,12 @@ class GradientField:
                 point.cost = None
                 point.gradient = None
         self.activeList = []
+        self.goals = []
         for g in goals:
             rospy.loginfo("goal is (%0.2f,%0.2f)",g.x,g.y)
             cell = self.cellNearestXY(g.x, g.y)
-            #cell.cost = 0
-            #self.activeList.append(cell)
+            cell.cost = 0
+            self.activeList.append(cell)
             self.goals.append(cell)
         self.startCell = self.cellNearestXY(self.startPosition.x, self.startPosition.y)
         self.costThresh = COST_THRESH_INITIAL
@@ -427,8 +431,6 @@ class GradientField:
         # start from the goals on the active list, and propagate the values from there
         temp =[]
         for i in range(iterations):
-            #self.outputCosts(i)
-            
             if len(self.activeList) == 0:
                 if len(self.highCostList) == 0:
                     rospy.loginfo("Both active lists are empty - no costs to calculate")
@@ -622,5 +624,4 @@ class GradientField:
         rospy.loginfo("Cost calculation finished")
         if self.localField:
             self.localField.initLocalFromGlobal()
-       
 

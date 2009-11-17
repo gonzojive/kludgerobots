@@ -91,13 +91,13 @@ class Part2():
         self._move.publishNextMovement()
         self._pFilter.receiveOdom(self.robotPosition().position())
         #self._pFilter.mapModel.broadcast()
-        if self._pFilter.laserReadingsChanged():
-            self._pFilter.laserInMapLock.acquire()
-            self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
-            self._pFilter.laserInMapLock.release()
-            self._pFilter.poseAverageLock.acquire()
-            self._localGradients.updatePath(self._pFilter.poseAverage)
-            self._pFilter.poseAverageLock.release()
+        #if self._pFilter.laserReadingsChanged():
+            #self._pFilter.laserInMapLock.acquire()
+            #self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
+            #self._pFilter.laserInMapLock.release()
+            #self._pFilter.poseAverageLock.acquire()
+            #self._localGradients.updatePath(self._pFilter.poseAverage)
+            #self._pFilter.poseAverageLock.release()
             
             
     
@@ -125,8 +125,7 @@ class Part2():
             pass
 
         self.initGradients()
-        self.initFilter()
-        goalIndex = 0       
+        self.initFilter()  
         # while we are not shutdown by the ROS, keep updating
         while not rospy.is_shutdown():
             try:
@@ -137,13 +136,7 @@ class Part2():
                     self._pFilter.poseAverageLock.acquire()
                     newPose = copy.deepcopy(self._pFilter.poseAverage)
                     self._pFilter.poseAverageLock.release()
-                    [linVel,angVel] = self._move.getNextCommand(newPose,goalIndex)
-                    if linVel == 0 and angVel == 0 :
-                        rospy.loginfo("reached goal: %d",goalIndex)
-                        if len(self._gradients.goals) > goalIndex +1:
-                            goalIndex = goalIndex+1;
-                        self._gradients.calculateCosts(70,goalIndex)
-                        self._gradients.displayGradient(self._visualizer)
+                    [linVel,angVel] = self._move.getNextCommand(newPose)
                     #publish commands if we haven't reached goal. else don't publish anything
                     self.velPublish.publish(Twist(Vector3(linVel,0,0),Vector3(0,0,angVel)))
                     
