@@ -35,6 +35,17 @@ class MapPoint:
         self.gradient = None
         self.intrinsicVal = 1
         self.cost = None
+
+
+class LocalObstacles:
+    def __init__(self, width, height):
+        self.obstacles = [[0]*height]*width
+    def newObstacles(self, points, minPoint, maxPoint):
+        for p in points:
+            self.obstacles[p.xInd][p.yInd] += 1
+        for i in xrange(minPoint[0], maxPoint[0]):
+            for j in xrange(minPoint[1], maxPoint[1]):
+                self.obstacles[i][j] -= 1
         
 
 class Goals:
@@ -59,6 +70,7 @@ class GradientField:
 
         self.localField = None
         self.globalField = None
+        self.localObstacles = None
         if distanceMap:
             self.mapWidth = int(distanceMap.fWidth)
             self.mapHeight = int(distanceMap.fHeight)
@@ -80,12 +92,32 @@ class GradientField:
         self.gridWidth = self.globalField.gridWidth
         self.gridHeight = self.globalField.gridHeight
         self.gradientMap = copy.deepcopy(self.globalField.gradientMap)
+        self.localObstacles = LocalObstacles(self.gridWidth, self.gridHeight)
 
 
     def newLaserReading(self, laserPoints):
+        minPoint = [10000, 10000]
+        maxPoint = [-1, -1]
+        obsList = []
+        self.localGoals = []
         for p in laserPoints:
-            if self.cellNearestXY(p[0], p[1]).intrinsicVal < NEW_OBSTACLE_THRESH:
-                rospy.loginfo("Found new obstacle at (%0.2f, %0.2f)", p[0], p[1])
+            cell = self.cellNearestXY(p[0], p[1])
+            if cell.xInd < minPoint[0]:
+                minPoint[0] = cell.xInd
+            if cell.xInd > maxPoint[0]:
+                maxPoint[0] = cell.xInd
+            if cell.yInd < minPoint[1]:
+                minPoint[1] = cell.yInd
+            if cell.yInd > maxPoint[1]:
+                maxPoint[1] = cell.yInd
+            if cell.intrinsicVal < NEW_OBSTACLE_THRESH:
+                rospy.loginfo("Found new obstacle at cell (%0.2f, %0.2f)", cell.x, cell.y)
+                obsList.append(cell)
+            else:
+                if cell not in self.localGoals:
+                    self.localGoals.append(cell)
+        #rospy.loginfo("Range: (%d, %d) to (%d, %d)", minPoint[0], minPoint[1], maxPoint[0], maxPoint[1])
+        self.localObstacles.newObstacles(obsList, minPoint, maxPoint)
         
 
     def setGoals(self, goals):
