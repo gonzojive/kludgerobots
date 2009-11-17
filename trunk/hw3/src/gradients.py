@@ -136,7 +136,7 @@ class GradientField:
         self.calculateGradients()
 
     def setStartPosition(self, x, y):
-        self.startPosition = pose.Pose(x, y)
+        self.startPosition = pose.Pose(x, y, 0)
 
 
     def setGoals(self, goals):
