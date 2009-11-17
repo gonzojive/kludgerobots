@@ -45,33 +45,36 @@ class MoveFromKeyboard:
             return raw_input()
             
     def getNextCommand(self,currPose):   
-        rospy.loginfo("currPose is:(%f,%f,%f)",currPose.x,currPose.y,currPose.theta)
+        #rospy.loginfo("currPose is:(%f,%f,%f)",currPose.x,currPose.y,currPose.theta)
         nearestGridPoint = self.gradient.cellNearestXY(currPose.x, currPose.y) #returns a gradientMap value
         newGrad = self.gradient.interpolateGradientAtXY(currPose.x,currPose.y)
         #newPose = vector_add([currPose.x,currPose.y], vector_scale(interpedGrad, self.gradient.stepSize))
         newTheta = math.atan2(newGrad[1],newGrad[0])
-        rospy.loginfo("going to (%f)",newTheta)
+        #rospy.loginfo("going to (%f)",newTheta)
         goals = [[g.x, g.y] for g in self.gradient.goals]
         
         #keep turning without translation until we are in line with the destination
-        if abs(currPose.theta - newTheta) > 1:
-            if currPose.theta > newTheta:
+        poseToGrad = util.normalizeAngle360(currPose.theta - newTheta)
+        gradToPose = util.normalizeAngle360(newTheta - currPose.theta)
+        thetaDiff = min(poseToGrad, gradToPose)
+        if thetaDiff > 1:
+            if poseToGrad < math.pi:
                 angVel = -0.2
             else:
                 angVel = 0.2
             linVel = 0.01
-        elif abs(currPose.theta - newTheta) > 0.05:
-            if currPose.theta > newTheta:
+        elif thetaDiff > 0.05:
+            if poseToGrad < math.pi:
                 angVel = -0.04
             else:
                 angVel = 0.04
-            linVel = 0.01
+            linVel = 0.04
         else:
             angVel = 0
             linVel = 0.05
-        if util.closeToOne([currPose.x,currPose.y], goals,0.5):
-            linVel = 0.03
-        if util.closeToOne([currPose.x,currPose.y], goals,0.3):
+        if util.closeToOne([currPose.x,currPose.y], goals, 0.5):
+            linVel = 0.1
+        if util.closeToOne([currPose.x,currPose.y], goals, 0.3):
             linVel = 0
             angVel = 0
             rospy.loginfo("reached goal");
