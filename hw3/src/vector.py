@@ -96,9 +96,11 @@ def vector_angle_signed(v, w):
 
 # rotates the vector theta degrees counterclockwise about the positive z axis
 def vector_rotate_2d(v, theta_about_z):
-    theta = theta_about_z
     [x, y] = v
-    return [x * math.cos(theta) - y * math.sin(theta), x * math.sin(theta) + y * math.cos(theta)]
+    sinTheta = math.sin(theta_about_z)
+    cosTheta = math.cos(theta_about_z)
+    return [x * cosTheta - y * sinTheta,
+            x * sinTheta + y * cosTheta]
 
 def lineDistanceToPoint(pt, line_origin, line_trajectory):
     w = vector_minus(pt, line_origin)

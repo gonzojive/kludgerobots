@@ -187,6 +187,7 @@ class GradientField:
         tenPercent = float(self.gridWidth) / 10.0
         nextPrint = tenPercent
         curPercent = 10
+
         for i in xrange(0, self.gridWidth):
             curY = 0.0
             for j in xrange(0, self.gridHeight):
@@ -218,6 +219,37 @@ class GradientField:
                     data = cutoff - d.cost
                 vals.append(data)
         imageutil.showImageRowCol(vals, self.gridHeight, self.gridWidth)
+
+    def outputCosts(self, i):
+
+        def allCells():
+            for col in self.gradientMap:
+                for cell in col:
+                    yield cell
+                    
+        imageutil.outputMatrix([c.cost if c and c.cost else 0 for c in allCells()],
+                               self.gridHeight, self.gridWidth,
+                               filename="/tmp/costs-iter%i.mat" % i, i=i)
+
+    def displayImageOfCosts2(self, cutoff = 25.0):
+        vals = []
+        def displayCostForCell(c):
+            if not c.cost or c.cost > cutoff:
+                data = cutoff
+            else:
+                data = c.cost
+            return data
+
+        def allCells():
+            for col in self.gradientMap:
+                for cell in col:
+                    yield cell
+
+        vals = [displayCostForCell(c) for c in allCells()]
+        
+        imageutil.showImageRowCol2(vals, self.gridHeight, self.gridWidth)
+        imageutil.outputMatrix([c.cost if c and c.cost else 0 for c in allCells()],
+                               self.gridHeight, self.gridWidth, "/tmp/costs.mat")
 
 
     def displayGradient(self, v):
@@ -268,6 +300,15 @@ class GradientField:
         else:
             return END_INTRINSIC
 
+    def sanityCheck(self):
+        n = 0
+        for xInd in xrange(0, self.gridWidth):
+            for yInd in xrange(0, self.gridHeight):
+                cell = self.gradientMap[xInd][yInd]
+                assert(xInd == cell.xInd)
+                assert(yInd == cell.yInd)
+                n += 1
+        rospy.loginfo("Sanity checked %i cells and they all passed", n)
     
     #function to find the 4 nearest neighbors
     def findNeighbors(self,point):
@@ -284,6 +325,13 @@ class GradientField:
             neighbors.append(self.gradientMap[x][y+1])
         return neighbors
 
+    # finds a cell's N S E W neighbors
+    def findCardinalNeighbors(self, n):
+        N = self.cellIsValid(n.xInd, n.yInd+1)
+        S = self.cellIsValid(n.xInd, n.yInd-1)
+        E = self.cellIsValid(n.xInd+1, n.yInd)
+        W = self.cellIsValid(n.xInd-1, n.yInd)
+        return [ N, S, E, W]
 
     def cellIsValid(self, i, j):
         if i < 0 or i >= self.gridWidth or j < 0 or j >= self.gridHeight:
@@ -326,7 +374,7 @@ class GradientField:
                 cell.gradient = grad
 
     # given north south east and west cells (that may be nil), 
-    def wavefrontUpdateValue(self, N, S, E, W, intrinsicCost):
+    def wavefrontUpdateValue(self, N, S, E, W, intrinsicCost, cell=None):
         leastCostCell = None
         for cell in [ N, S, E, W ]:
             
@@ -340,29 +388,35 @@ class GradientField:
         adjCost = min([c.cost for c in adjCells]) if len(adjCells) > 0 else None
         
         def costFromCostsAtAdjCardinalDirections(Ta, Tc):
-            if not Tc:
-                return Ta + intrinsicCost
+            assert(intrinsicCost >= .99)
+            if Tc == None:
+                #return Ta + intrinsicCost
+                Tc = Ta + 100000.0
+            assert(Ta <= Tc)
             # solve the quadratic  (T - Ta)^2 + (T-Tc)^2 = h^2 Fij^2
             # We assume that Fij = 0 because we do not really understand it
             # and this becomes the quadratic
             # (2) T^2  +  -2(Ta + Tc) T + (Ta^2 - Tc^2) - h^2 = 0
             h = 1.0 #self.spacing #0.0 #Fij * self.spacing
+            #Fij = intrinsicCost
+            Fij = 0.0 + intrinsicCost
             a = 2.0
             b = -2.0 * (Ta + Tc)
-            c = Ta*Ta + Tc*Tc - (h*h * intrinsicCost * intrinsicCost)
+            c = Ta*Ta + Tc*Tc - (h*h * Fij * Fij)
             # solved by the quadratic formula
             roots = util.quadraticRoots(a, b, c)
             # only accept answers that are farther away than the minimum neighbor cost 
-            roots = filter(lambda x: x.__class__ != complex and x > minCost, roots)
+            roots = filter(lambda x: x.__class__ != complex and x > Tc, roots)
+            #rospy.loginfo("roots for Ta = %f, Tc = %f; intrinsic = %f. a=%f b =%f c=%f: %s" % (Ta, Tc, intrinsicCost, a, b, c, roots))
             if len(roots) == 0:
                 #rospy.loginfo("No real roots when Ta = %f, Tc = %f. a=%f b =%f c=%f, %s" % (Ta, Tc, a, b, c, util.quadraticRoots(a, b, c)))
                 # degenerate case
-                return math.sqrt(h * h * intrinsicCost * intrinsicCost) + minCost
-            #rospy.loginfo("Computed roots for Ta = %f, Tc = %f. a=%f b =%f c=%f: %s" % (Ta, Tc, a, b, c, roots))
+                return math.sqrt(h * h * Fij * Fij) + Ta
             val = min(roots)
             assert(val >= 0)
             return val
         result = costFromCostsAtAdjCardinalDirections(minCost, adjCost)
+
         #rospy.loginfo("Min cost neighbors: %s, %s | our cost: %f" % (minCost, adjCost, result))
         return result
 
@@ -372,23 +426,80 @@ class GradientField:
     def calculateCosts(self, iterations = 70,goalIndex = 0):
         # start from the goals on the active list, and propagate the values from there
         temp =[]
-        #add the goal to the active list only once and set the gradientMap to 0
-        if self.visitedGoals.count(goalIndex) == 0:
-            rospy.loginfo("goal is %d",goalIndex);    
-            #reset the whole gradient map    
-            for row in self.gradientMap:
-                for point in row:
-                    point.cost = None
-                    point.gradient = None    
-            #visited goals shouldn't have a 0 cost anymore
-            for i in self.visitedGoals:
-                self.goals[i].cost = None
-                self.goals[i].gradient = None
-            self.goals[goalIndex].cost =0
-            self.activeList.append(self.goals[goalIndex])            
-            self.visitedGoals.append(goalIndex)
-            
         for i in range(iterations):
+            #self.outputCosts(i)
+            
+            if len(self.activeList) == 0:
+                if len(self.highCostList) == 0:
+                    rospy.loginfo("Both active lists are empty - no costs to calculate")
+                    return
+                else:
+                    rospy.loginfo("Using the high cost list with threshold for high cost %f", self.costThresh)
+                self.activeList = self.highCostList
+                self.highCostList = []
+                self.costThresh += COST_THRESH_INCREMENT
+            while self.activeList:
+                #currentPoint is the point whose value we know, and
+                #which will be used to propagate values
+                currentPoint = self.activeList.pop()
+                
+                #calculate the neighbors of the point and update them
+                neighbors = self.findNeighbors(currentPoint)
+                
+                for n in neighbors:
+                    # use the Sethian method to propagate the wavefront
+                    [N, S, E, W] = self.findCardinalNeighbors(n)
+                    newCost = self.wavefrontUpdateValue(N, S, E, W, n.intrinsicVal, n)
+                    
+                    if n.cost == None or newCost < n.cost:
+                        n.cost = newCost
+                        
+                        if n.cost < self.costThresh:
+                            temp.append(n)  # put onto active list
+                        else:
+                            self.highCostList.append(n)
+
+                        if n == self.startCell:
+                            rospy.loginfo("Updated starting point cost to %f", n.cost)
+                #end for
+            #end while
+
+            # add the temp list to the active list, since the
+            # values for all the entries in temp have been updated
+            self.activeList.extend(temp)
+            temp =[]
+            #if (i+1)%10 == 0:
+                #rospy.loginfo("iteration %d done",i+1)
+         #end iterations
+        rospy.loginfo("Cost calculation finished")
+        if self.localField:
+            self.localField.initLocalFromGlobal()
+       
+
+    def findPathGivenGradient(self, v, position = None):
+        self.path =[]
+        currPos = position or [self.startPosition.x, self.startPosition.y]
+        goals = [[g.x, g.y] for g in self.goals]
+        rospy.loginfo("Finding path to nearest goal from %0.2f,%0.2f", currPos[0], currPos[1])
+        maxPath = 200
+        while len(self.path) < maxPath and not util.closeToOne(currPos, goals):
+            interpedGrad = self.interpolateGradientAtXY(currPos[0],currPos[1])
+            #rospy.loginfo("path gradient: (%.2f, %.2f) of len %f", interpedGrad[0], interpedGrad[1], vector_length(interpedGrad))
+            currPos = vector_add(currPos, vector_scale(interpedGrad, self.stepSize))
+            self.path.append(currPos)
+        #rospy.loginfo("Found goal. Path is:")
+        v.vizConnectedPoints(path, color=[0,0,1])
+
+    def calculateCostsOriginal(self, iterations = 70):
+        # start from the goals on the active list, and propagate the values from there
+        temp =[]
+        numPointsUpdated = 0
+        MAX_POINTS_UPDATED = 30000000000
+        for i in range(iterations):
+            self.outputCosts(i)
+            if numPointsUpdated > MAX_POINTS_UPDATED:
+                break 
+            
             if len(self.activeList) == 0:
                 if len(self.highCostList) == 0:
                     rospy.loginfo("Both active lists are empty - no costs to calculate")
@@ -397,6 +508,9 @@ class GradientField:
                 self.highCostList = []
                 self.costThresh += COST_THRESH_INCREMENT
             while self.activeList:
+                if numPointsUpdated > MAX_POINTS_UPDATED:
+                    break 
+
                 currentPoint = self.activeList.pop() #currentPoint is the point whose value we know, and which will be used to propagate values
                 
                 #calculate the neighbors of the point
@@ -405,6 +519,10 @@ class GradientField:
                 #neighbors stores the neighbors of the point. 
                 #Now we have to find the minimum neighbors along N-S and E-W for each of these neighbors
                 for n in neighbors:
+                    numPointsUpdated += 1
+                    if numPointsUpdated > MAX_POINTS_UPDATED:
+                        break 
+        
                     #find the minimum
                     N = self.cellIsValid(n.xInd, n.yInd+1)
                     S = self.cellIsValid(n.xInd, n.yInd-1)
@@ -473,9 +591,10 @@ class GradientField:
                     #    rospy.loginfo("Warning: found a negative cost")
                     # alternatively use the Sethian method to propagate the wavefront
                     newCost = self.wavefrontUpdateValue(N, S, E, W, n.intrinsicVal)
-                    if n.cost:
+                    if n.cost != None:
                         if newCost < n.cost:
                             n.cost = newCost
+                            rospy.loginfo("Grid point [%i, %i] cost => %f", n.xInd, n.yInd, n.cost)
                             if n.cost < self.costThresh:
                                 temp.append(n)  # put onto active list
                             else:
@@ -484,12 +603,14 @@ class GradientField:
                                 rospy.loginfo("Updated starting point cost to %f", n.cost)
                     else:
                         n.cost = newCost
+                        rospy.loginfo("Grid point [%i, %i] cost => %f", n.xInd, n.yInd, n.cost)
                         if n.cost < self.costThresh:
                             temp.append(n)  # put onto active list
                         else:
                             self.highCostList.append(n)
                         if n == self.startCell:
                             rospy.loginfo("Updated starting point cost to %f", n.cost)
+                            
                 #end for
             #end while
             #add the temp list to the active list, since the values for all the entries in temp have been updated
@@ -502,18 +623,4 @@ class GradientField:
         if self.localField:
             self.localField.initLocalFromGlobal()
        
-
-    def findPathGivenGradient(self, v, position = None):
-        self.path =[]
-        currPos = position or [self.startPosition.x, self.startPosition.y]
-        goals = [[g.x, g.y] for g in self.goals]
-        rospy.loginfo("Finding path to nearest goal from %0.2f,%0.2f", currPos[0], currPos[1])
-        maxPath = 200
-        while len(self.path) < maxPath and not util.closeToOne(currPos, goals):
-            interpedGrad = self.interpolateGradientAtXY(currPos[0],currPos[1])
-            #rospy.loginfo("path gradient: (%.2f, %.2f) of len %f", interpedGrad[0], interpedGrad[1], vector_length(interpedGrad))
-            currPos = vector_add(currPos, vector_scale(interpedGrad, self.stepSize))
-            self.path.append(currPos)
-        #rospy.loginfo("Found goal. Path is:")
-        v.vizConnectedPoints(path, color=[0,0,1])
 
