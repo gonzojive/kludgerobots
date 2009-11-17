@@ -1,0 +1,7 @@
+<launch>
+  <master auto="start"/>
+  <param name="/use_sim_time" value="true"/>
+  <node pkg="map_server" type="map_server" args="$(find hw2)/gates.yaml" respawn="false" />
+  <node pkg="rviz" type="rviz" args="" respawn="false" />
+  <node pkg="rxtools" type="rxconsole" args="" respawn="false" />
+</launch>
