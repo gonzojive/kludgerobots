@@ -311,7 +311,7 @@ class GradientField:
                 cell.gradient = grad
 
     # given north south east and west cells (that may be nil), 
-    def wavefrontUpdateValue(self, N, S, E, W):
+    def wavefrontUpdateValue(self, N, S, E, W, intrinsicCost):
         leastCostCell = None
         for cell in [ N, S, E, W ]:
             
@@ -323,22 +323,33 @@ class GradientField:
 
         minCost = leastCostCell.cost
         adjCost = min([c.cost for c in adjCells]) if len(adjCells) > 0 else None
-
+        
         def costFromCostsAtAdjCardinalDirections(Ta, Tc):
             if not Tc:
-                return Ta
+                return Ta + intrinsicCost
             # solve the quadratic  (T - Ta)^2 + (T-Tc)^2 = h^2 Fij^2
             # We assume that Fij = 0 because we do not really understand it
             # and this becomes the quadratic
             # (2) T^2  +  -2(Ta + Tc) T + (Ta^2 - Tc^2) - h^2 = 0
-            h = 0.0 #Fij * self.spacing
+            h = 1.0 #self.spacing #0.0 #Fij * self.spacing
             a = 2.0
             b = -2.0 * (Ta + Tc)
-            c = Ta*Ta - Tc*Tc - h*h
+            c = Ta*Ta + Tc*Tc - (h*h * intrinsicCost * intrinsicCost)
             # solved by the quadratic formula
-            [root1, root2] = util.quadraticRoots(a, b, c)
-            return min(root1, root2)
-        return costFromCostsAtAdjCardinalDirections(minCost, adjCost)
+            roots = util.quadraticRoots(a, b, c)
+            # only accept answers that are farther away than the minimum neighbor cost 
+            roots = filter(lambda x: x.__class__ != complex and x > minCost, roots)
+            if len(roots) == 0:
+                #rospy.loginfo("No real roots when Ta = %f, Tc = %f. a=%f b =%f c=%f, %s" % (Ta, Tc, a, b, c, util.quadraticRoots(a, b, c)))
+                # degenerate case
+                return math.sqrt(h * h * intrinsicCost * intrinsicCost) + minCost
+            #rospy.loginfo("Computed roots for Ta = %f, Tc = %f. a=%f b =%f c=%f: %s" % (Ta, Tc, a, b, c, roots))
+            val = min(roots)
+            assert(val >= 0)
+            return val
+        result = costFromCostsAtAdjCardinalDirections(minCost, adjCost)
+        #rospy.loginfo("Min cost neighbors: %s, %s | our cost: %f" % (minCost, adjCost, result))
+        return result
 
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
@@ -406,7 +417,7 @@ class GradientField:
                     # Calculate the correct theta, based on NS and EW
                     if NS != None:
                         if EW != None:
-                            traj = [EW.cost, NS.cost]
+                            traj = [-1.0*NS.cost, EW.cost]
                             if NS.cost < EW.cost:
                                 minPoint = NS
                             else:
@@ -424,13 +435,13 @@ class GradientField:
 
                     line_origin = [minPoint.x, minPoint.y]
                     line_trajectory = traj
-                    dist = vector.lineDistanceToPoint([n.x, n.y], line_origin, line_trajectory)
+                    #dist = vector.lineDistanceToPoint([n.x, n.y], line_origin, line_trajectory)
                     #update cost
-                    newCost = minPoint.cost + dist*n.intrinsicVal
-                    if newCost < 0:
-                        rospy.loginfo("Warning: found a negative cost")
+                    #newCost = minPoint.cost + dist*n.intrinsicVal
+                    #if newCost < 0:
+                    #    rospy.loginfo("Warning: found a negative cost")
                     # alternatively use the Sethian method to propagate the wavefront
-                    #newCost = self.wavefrontUpdateValue(N, S, E, W) + n.intrinsicVal
+                    newCost = self.wavefrontUpdateValue(N, S, E, W, n.intrinsicVal)
                     if n.cost:
                         if newCost < n.cost:
                             n.cost = newCost
@@ -467,7 +478,7 @@ class GradientField:
         goals = [[g.x, g.y] for g in self.goals]
         rospy.loginfo("Finding path to nearest goal from %0.2f,%0.2f", currPos[0], currPos[1])
         maxPath = 200
-        while len(path) < maxPath and not util.closeToOne(currPos, goals):
+        while len(self.path) < maxPath and not util.closeToOne(currPos, goals):
             interpedGrad = self.interpolateGradientAtXY(currPos[0],currPos[1])
             #rospy.loginfo("path gradient: (%.2f, %.2f) of len %f", interpedGrad[0], interpedGrad[1], vector_length(interpedGrad))
             currPos = vector_add(currPos, vector_scale(interpedGrad, self.stepSize))

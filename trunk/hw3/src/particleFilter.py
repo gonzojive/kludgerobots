@@ -10,6 +10,7 @@ import geometry_msgs
 import geometry_msgs.msg
 import laser
 import random
+import cProfile
 
 from vector import *
 
@@ -18,6 +19,10 @@ minimumMovement = .03    # 30 mm - probably want to increase this when we have m
 
 minimumTurn = util.d2r(4)  # 4 degrees
 
+context = None
+
+def profiledParticleFilter():
+    context.mainLoop()
 
 class ParticleFilter(threading.Thread):
     # constructor takes:
@@ -28,6 +33,8 @@ class ParticleFilter(threading.Thread):
     # transformer - the odometry object that we use to transform between frames
     # initialPose - the initial guess of the robot in the Map frame (an instance of Pose)
     def __init__(self, odom, viz, laser, motionErr, transformer, initialPose, mm, full = True):
+        global context
+        context = self
         threading.Thread.__init__(self) # initialize the threading package
         self.transformer = transformer
         # lastOdom stores
@@ -119,6 +126,10 @@ class ParticleFilter(threading.Thread):
     # that the program can't continuously check for rospy.is_shutdown(), and may never stop executing if the main
     # thread hits an error and unexpectedly quits. This is much safer.
     def run(self):
+        import particleFilter
+        cProfile.run('particleFilter.profiledParticleFilter()', '/tmp/pfilterProfStats')
+
+    def mainLoop(self):
         while not rospy.is_shutdown():    # loop for the duration of the program
             # IMPORTANT: Do we need a lock to compare a value to 0? I don't think so, but not positive
             # a lock would slow this down a lot, and as long as the value can't go from 1 -> 0, I think we're OK
@@ -221,7 +232,7 @@ class ParticleFilter(threading.Thread):
             p.y += dx*sinTheta + dy*cosTheta    # rotate dy into pose frame and add
             p.theta = util.normalizeAngle360(p.theta + dtheta)   # theta adds linearly
             #rospy.loginfo("Pose1: %s", p.toStr())
-            self.cullIllegalPoses()
+        self.cullIllegalPoses()
 
     
     def updateStep(self, laserVectors):

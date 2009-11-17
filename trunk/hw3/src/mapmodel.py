@@ -354,6 +354,17 @@ class MapModel:
 
         return float(probabilityOfOccupancy) / 100.0
 
+    def probeAtPointDiscrete(self, xDiscrete, yDiscrete):
+        # here we the
+        meta = self.meta
+        probabilityOfOccupancy = ord(self.grid[yDiscrete * meta.width + xDiscrete])
+        #rospy.loginfo("xD = %d, yD = %d", xDiscrete, yDiscrete)       
+        #rospy.loginfo("val = %d", ord(probabilityOfOccupancy))
+        if probabilityOfOccupancy < 0:
+           probabilityOfOccupancy = 100
+
+        return float(probabilityOfOccupancy) / 100.0
+
     # returns the maximum distance from vSTart to vEnd that can be gone in the map
     # before bumping into an obstacle
     def castVector(self, vStart, vEnd):

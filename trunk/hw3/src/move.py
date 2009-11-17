@@ -56,25 +56,24 @@ class MoveFromKeyboard:
         #keep turning without translation until we are in line with the destination
         if abs(currPose.theta - newTheta) > 1:
             if currPose.theta > newTheta:
-                angVel = -0.1
+                angVel = -0.2
             else:
-                angVel = 0.1
+                angVel = 0.2
             linVel = 0.01
         elif abs(currPose.theta - newTheta) > 0.05:
             if currPose.theta > newTheta:
-                angVel = -0.02
+                angVel = -0.04
             else:
-                angVel = 0.02
+                angVel = 0.04
             linVel = 0.01
         else:
             angVel = 0
-            linVel = 0.2
+            linVel = 0.05
         if util.closeToOne([currPose.x,currPose.y], goals,0.5):
-            linVel = 0.1
-       if util.closeToOne([currPose.x,currPose.y], goals,0.3):
+            linVel = 0.03
+        if util.closeToOne([currPose.x,currPose.y], goals,0.3):
             linVel = 0
             angVel = 0
-        
             rospy.loginfo("reached goal");
         rospy.loginfo("sending linearVel = %f,angVel =%f",linVel,angVel)
         return [linVel,angVel]
@@ -85,6 +84,7 @@ class MoveFromKeyboard:
 
     def parseText(self, text):
         cmd = text.split()
+        rospy.loginfo("received command: %s", text)
         #rospy.loginfo("Command received: %s", text)
         if cmd[0] == "g":   # setting or removing a goal
             if len(cmd) == 3:   # g x y

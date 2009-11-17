@@ -178,7 +178,8 @@ class Part2():
             
             self.update(trans, rot)
             pass    # give another thread a chance to run
-            rate.sleep()
+            rospy.loginfo("Finished update, sleeping.")
+            #rate.sleep()
 
 
 if __name__ == '__main__':
