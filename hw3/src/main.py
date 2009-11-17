@@ -97,6 +97,9 @@ class Part2():
             self._pFilter.laserInMapLock.acquire()
             self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
             self._pFilter.laserInMapLock.release()
+            self._pFilter.poseAverageLock.acquire()
+            self._localGradients.updatePath(self._pFilter.poseAverage)
+            self._pFilter.poseAverageLock.release()
             
     def reduceFilter(self):
         #spin a few times to reduce particle cloud and get well-localized

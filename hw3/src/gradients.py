@@ -35,17 +35,6 @@ class MapPoint:
         self.gradient = None
         self.intrinsicVal = 1
         self.cost = None
-
-
-class LocalObstacles:
-    def __init__(self, width, height):
-        self.obstacles = [[0]*height]*width
-    def newObstacles(self, points, minPoint, maxPoint):
-        for p in points:
-            self.obstacles[p.xInd][p.yInd] += 1
-        for i in xrange(minPoint[0], maxPoint[0]):
-            for j in xrange(minPoint[1], maxPoint[1]):
-                self.obstacles[i][j] -= 1
         
 
 class Goals:
@@ -88,33 +77,64 @@ class GradientField:
         self.gridWidth = self.globalField.gridWidth
         self.gridHeight = self.globalField.gridHeight
         self.gradientMap = copy.deepcopy(self.globalField.gradientMap)
-        self.localObstacles = LocalObstacles(self.gridWidth, self.gridHeight)
+        self.goals = self.globalField.goals
+        self.localObstacles = [[0]*self.gridHeight]*self.gridWidth
         self.localGoals = []
 
 
     def newLaserReading(self, laserPoints):
-        #minPoint = [10000, 10000]
-        #maxPoint = [-1, -1]
+        minPoint = [10000, 10000]
+        maxPoint = [-1, -1]
         obsList = []
         self.localGoals = []
         for p in laserPoints:
             cell = self.cellNearestXY(p[0], p[1])
-            #if cell.xInd < minPoint[0]:
-            #    minPoint[0] = cell.xInd
-            #if cell.xInd > maxPoint[0]:
-            #    maxPoint[0] = cell.xInd
-            #if cell.yInd < minPoint[1]:
-            #    minPoint[1] = cell.yInd
-            #if cell.yInd > maxPoint[1]:
-            #    maxPoint[1] = cell.yInd
+            if cell.xInd < minPoint[0]:
+                minPoint[0] = cell.xInd
+            if cell.xInd > maxPoint[0]:
+                maxPoint[0] = cell.xInd
+            if cell.yInd < minPoint[1]:
+                minPoint[1] = cell.yInd
+            if cell.yInd > maxPoint[1]:
+                maxPoint[1] = cell.yInd
             if cell.intrinsicVal < NEW_OBSTACLE_THRESH and cell not in obsList:
                 rospy.loginfo("Found new obstacle at cell (%0.2f, %0.2f)", cell.x, cell.y)
                 obsList.append(cell)
+                self.localObstacles[cell.xInd][cell.yInd] += 3
             else:
                 if cell not in self.localGoals:
                     self.localGoals.append(cell)
         #rospy.loginfo("Range: (%d, %d) to (%d, %d)", minPoint[0], minPoint[1], maxPoint[0], maxPoint[1])
-        #self.localObstacles.newObstacles(obsList, minPoint, maxPoint)
+
+        for i in xrange(minPoint[0], maxPoint[0]):
+            for j in xrange(minPoint[1], maxPoint[1]):
+                self.gradientMap[i][j].cost = None
+                self.gradientMap[i][j].gradient = None
+                self.localObstacles[i][j] -= 2
+                if self.localObstacles[i][j] > 0:
+                    for x in xrange(i-4, i+5):
+                        for y in xrange(j-4, j+5):
+                            intCost = self.intrinsicFunc(abs((i-x)*self.spacing)+abs((j-y)*self.spacing))
+                            if intCost > self.gradientMap[x][y].intrinsicVal:
+                                self.gradientMap[x][y].intrinsicVal = intCost
+        self.activeList = []
+        for g in self.localGoals:
+            self.gradientMap[g.xInd][g.yInd].cost = self.globalField.gradientMap[g.xInd][g.yInd].cost
+            self.activeList.append(g)
+        for g in self.goals:
+            cell = self.cellNearestXY(g.x, g.y)
+            cell.cost = 0
+            self.activeList.append(cell)
+
+    def updatePath(self, position):
+        self.startCell = self.cellNearestXY(position.x, position.y)
+        self.startCell.cost = None
+        self.costThresh = COST_THRESH_INITIAL
+        self.highCostList = []
+        self.calculateCosts(30)
+        if not self.foundStartPosition():
+            self.calculateCosts(30)
+        self.calculateGradients()
         
 
     def setGoals(self, goals):
@@ -221,9 +241,9 @@ class GradientField:
 
     def displayImageOfIntrinsics(self, cutoff = 100.0):
         vals = []
+        data = 0
         for c in self.gradientMap:
             for d in c:
-                data = 0
                 if d.intrinsicVal > cutoff:
                     data = 0
                 else:
@@ -302,7 +322,6 @@ class GradientField:
                     grad[1] = cell.cost - N.cost
                 else:
                     grad[1] = S.cost - N.cost
-                
                 if (vector_length_squared(grad) > .0001):
                     grad = vector_normalize(grad)
                 cell.gradient = grad
