@@ -44,7 +44,7 @@ class MoveFromKeyboard:
         if r == [sys.stdin]:
             return raw_input()
             
-    def getNextCommand(self,currPose):   
+    def getNextCommand(self,currPose,goalIndex):   
         #rospy.loginfo("currPose is:(%f,%f,%f)",currPose.x,currPose.y,currPose.theta)
         nearestGridPoint = self.gradient.cellNearestXY(currPose.x, currPose.y) #returns a gradientMap value
         newGrad = self.gradient.interpolateGradientAtXY(currPose.x,currPose.y)
@@ -78,9 +78,9 @@ class MoveFromKeyboard:
         else:
             angVel = 0.0
             linVel = 0.3
-        if util.closeToOne([currPose.x,currPose.y], goals, 1.0):
+        if util.close([currPose.x,currPose.y], goals[goalIndex], 1.0):
             linVel = linVel / 2.0
-        if util.closeToOne([currPose.x,currPose.y], goals, 0.2):
+        if util.close([currPose.x,currPose.y], goals[goalIndex], 0.2):
             linVel = 0
             angVel = 0
             rospy.loginfo("reached goal");
@@ -131,7 +131,7 @@ class MoveFromKeyboard:
                     self.gradient.displayImageOfCosts()
                 else:
                     self.gradient.displayImageOfCosts(int(cmd[2]))
-            elif cmd[1] == "gradient" or cmd[1] == "grad" or cmd[1] == "g":
+            elif cmd[1] == "gradient" or cmd[1] == "grad" or cmd[1] == "g": 
                 self.gradient.displayGradient(self.viz)
             elif cmd[1] == "local":
                 if cmd[2] == "intrinsic":
@@ -167,6 +167,10 @@ class MoveFromKeyboard:
         elif cmd[0] == "moveRobot":
             rospy.loginfo("Setting goal (40, 45)")
             g = goal.Goal(40, 45)
+            self.goals.newGoal(g)
+            g = goal.Goal(36, 47)
+            self.goals.newGoal(g)
+            g = goal.Goal(40, 43)
             self.goals.newGoal(g)
             self.gradient.setGoals(self.goals.goalList())
             rospy.loginfo("Iterating 60 costs")
