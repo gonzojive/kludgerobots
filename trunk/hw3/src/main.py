@@ -89,14 +89,16 @@ class Part2():
     def update(self, trans, rot):
         self.robotPosition().odomReadingNew(trans, rot)
         self._pFilter.receiveOdom(self.robotPosition().position())
-        #self._pFilter.mapModel.broadcast()
-        if self._pFilter.laserReadingsChanged():
-            self._pFilter.laserInMapLock.acquire()
-            self._localGradients.newLaserReading(self._pFilter.laserInMap[:])
-            self._pFilter.laserInMapLock.release()
-            #self._pFilter.poseAverageLock.acquire()
-            #self._localGradients.updatePath(self._pFilter.poseAverage)
-            #self._pFilter.poseAverageLock.release()
+        useLocal = False    # set this to true before running to use local readings
+        if useLocal and self._pFilter.laserReadingsChanged():
+            self._pFilter.laserInMapLock.acquire()  # <-- grab the laser lock -->
+            newLaser = copy.deepcopy(self._pFilter.laserInMap)
+            self._pFilter.laserInMapLock.release()  # <-- release the laser lock -->
+            self._pFilter.poseAverageLock.acquire() # <-- grab the pose lock -->
+            newPosition = copy.deepcopy(self._pFilter.poseAverage)
+            self._pFilter.poseAverageLock.release() # <-- release the pose lock -->
+            self._localGradients.newLaserReading(newLaser)
+            self._localGradients.updatePath(newPosition)
         self._move.publishNextMovement()
             
             
