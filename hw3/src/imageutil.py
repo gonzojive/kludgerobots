@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 
 import numpy
-import scipy.io
+#import scipy.io
     
 # outputs a grayscale image, scaling the data according to its maximum
 def showImageRowCol(data, width, height):
@@ -30,13 +30,13 @@ def showImageRowCol2(data, width, height):
         dataScaled = [0] * len(data)
     im.putdata(dataScaled)
     im.show()
-    outputMatrix(data, width, height)
+#    outputMatrix(data, width, height)
 
-def outputMatrix(data, width, height, filename='/tmp/arrdata.mat', i=""):
+#def outputMatrix(data, width, height, filename='/tmp/arrdata.mat', i=""):
     # output the matlab matrix
-    arr = numpy.array(data)
-    arr = arr.reshape((height, width))
-    scipy.io.savemat(filename, mdict={"arr%i" % i: arr})
+#    arr = numpy.array(data)
+#    arr = arr.reshape((height, width))
+#    scipy.io.savemat(filename, mdict={"arr%i" % i: arr})
 
 def showMapImageRowCol(data, width, height):
     im = PIL.Image.new('L', (width,height))  # 'P' for palettized

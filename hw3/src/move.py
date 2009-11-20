@@ -48,16 +48,13 @@ class MoveFromKeyboard:
     def getNextCommand(self,currPose):
         if self.pause:
             return [0, 0]
-        #rospy.loginfo("currPose is:(%f,%f,%f)",currPose.x,currPose.y,currPose.theta)
         if not self.localGradient.initializationDone:
             nearestGridPoint = self.gradient.cellNearestXY(currPose.x, currPose.y)
             newGrad = self.gradient.interpolateGradientAtXY(currPose.x,currPose.y)
         else:
             nearestGridPoint = self.localGradient.cellNearestXY(currPose.x, currPose.y)
             newGrad = self.localGradient.interpolateGradientAtXY(currPose.x,currPose.y)
-        #newPose = vector_add([currPose.x,currPose.y], vector_scale(interpedGrad, self.gradient.stepSize))
         newTheta = math.atan2(newGrad[1],newGrad[0])
-        #rospy.loginfo("going to (%f)",newTheta)
         goals = [[g.x, g.y] for g in self.goals.goalList()]
         if len(goals) == 0:
             return [0, 0]

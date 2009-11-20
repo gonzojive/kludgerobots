@@ -146,23 +146,24 @@ class GradientField:
                     cell = self.gradientMap[x][y]
                     if intCost > cell.intrinsicVal:
                         #rospy.loginfo("Intrinsic cost was: %0.2f, now %0.2f", cell.intrinsicVal, intCost)
-                        cell.cost += (intCost - cell.intrinsicVal) * self.spacing
                         cell.intrinsicVal = intCost
-                        localCells = self.findNeighbors(cell) + [cell]
-                        for c in localCells:
-                            if c not in updateList:
-                                updateList.append(c)
-        for c in updateList:
-            self.calculateOneGradient(c)
         self.initializationDone = True
 
     def updatePath(self, position):
         self.startCell = self.cellNearestXY(position.x, position.y)
-        self.startCell.cost = None
+        for row in self.gradientMap:
+            for point in row:
+                point.cost = None
+                point.gradient = None
         self.costThresh = COST_THRESH_INITIAL
+        self.activeList = []
         self.highCostList = []
+        for g in self.goals:
+            cell = self.gradientMap[g.xInd][g.yInd]
+            cell.cost = 0
+            self.activeList.append(cell)
         while not self.foundStartPosition():
-            self.calculateCosts(30)
+            self.calculateCosts(10)
         self.calculateGradients()
 
     def setStartPosition(self, x, y):
@@ -367,6 +368,7 @@ class GradientField:
         W = self.cellIsValid(n.xInd-1, n.yInd)
         return [ N, S, E, W]
 
+
     def cellIsValid(self, i, j):
         if i < 0 or i >= self.gridWidth or j < 0 or j >= self.gridHeight:
             return None
@@ -460,7 +462,7 @@ class GradientField:
     # calculateCosts()
     # assumes the active list has been set, and goal costs have been set to 0
     #uses LPN algorithm, as in paper
-    def calculateCosts(self, iterations = 70,goalIndex = 0):
+    def calculateCosts(self, iterations = 70,goalIndex = 0, display=False):
         # start from the goals on the active list, and propagate the values from there
         temp =[]
         for i in range(iterations):
@@ -477,6 +479,8 @@ class GradientField:
                 #currentPoint is the point whose value we know, and
                 #which will be used to propagate values
                 currentPoint = self.activeList.pop()
+                if display:
+                    rospy.loginfo("Active point: (%d, %d) in grid", currentPoint.xInd, currentPoint.yInd)
                 
                 #calculate the neighbors of the point and update them
                 neighbors = self.findNeighbors(currentPoint)
@@ -484,6 +488,14 @@ class GradientField:
                 for n in neighbors:
                     # use the Sethian method to propagate the wavefront
                     [N, S, E, W] = self.findCardinalNeighbors(n)
+                    if display:
+                        rospy.loginfo("  Neighbor: (%d, %d) in grid", n.xInd, n.yInd)
+                    for test in [N, S, E, W]:
+                        if display:
+                            if test:
+                                rospy.loginfo("    (%d, %d) is valid", test.xInd, test.yInd)
+                            else:
+                                rospy.loginfo("    not valid")
                     newCost = self.wavefrontUpdateValue(N, S, E, W, n.intrinsicVal, n)
                     
                     if n.cost == None or newCost < n.cost:
