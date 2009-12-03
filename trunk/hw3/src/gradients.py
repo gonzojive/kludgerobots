@@ -535,4 +535,4 @@ class GradientField:
             currPos = vector_add(currPos, vector_scale(interpedGrad, self.stepSize))
             self.path.append(currPos)
         #rospy.loginfo("Found goal. Path is:")
-        v.vizConnectedPoints(path, color=[0,0,1])
+        v.vizConnectedPoints(self.path, color=[0,0,1])

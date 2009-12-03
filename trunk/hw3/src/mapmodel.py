@@ -346,7 +346,7 @@ class MapModel:
         yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.meta.height)
         # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
-        probabilityOfOccupancy = ord(self.grid[yDiscrete * meta.width + xDiscrete])
+        probabilityOfOccupancy = self.grid[yDiscrete * meta.width + xDiscrete]
         #rospy.loginfo("xD = %d, yD = %d", xDiscrete, yDiscrete)       
         #rospy.loginfo("val = %d", ord(probabilityOfOccupancy))
         if probabilityOfOccupancy < 0:

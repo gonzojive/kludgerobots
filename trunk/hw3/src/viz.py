@@ -18,7 +18,7 @@ from geometry_msgs.msg import *
 from roslib.rostime import Duration
 
 LINE_WIDTH = .02
-POINT_WIDTH = .1
+POINT_WIDTH = .09
 
 class Visualizer:
     def __init__(self):
@@ -78,7 +78,7 @@ class Visualizer:
         marker.pose.orientation.z = 0.0;
         marker.pose.orientation.w = 1.0;
 
-        scale = LINE_WIDTH
+        scale = LINE_WIDTH if markerType != Marker.POINTS else POINT_WIDTH
         marker.scale.x = scale
         marker.scale.y = scale
         marker.scale.z = scale
@@ -123,7 +123,7 @@ class Visualizer:
     def vizArrow(self, start, theta, size = [1.0, 1.0, 1.0], idNum = None, color = None, alpha = None):
         marker = Marker()   # create an empty Marker
         marker.header.frame_id = "/map"  # marker source frame
-        #marker.header.stamp = rospy.Time()  # timestamp - I think ros automatically adds these
+        marker.header.stamp = rospy.Time.now()  # timestamp - I think ros automatically adds these
         marker.ns = "arrows"    # namespace - might as well make it specific
         if idNum:   # if the caller wants to specify id numbers so the arrows last until overwritten
             marker.id = idNum
