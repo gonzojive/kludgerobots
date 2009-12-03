@@ -7,6 +7,11 @@ class Goal:
     def __init__(self, goalX, goalY):
         self.x = int(goalX)
         self.y = int(goalY)
+
+    def __iter__(self):
+        yield self.x
+        yield self.y
+        
     def toStr(self):
         return "(" + str(self.x) + ", " + str(self.y) + ")"
 

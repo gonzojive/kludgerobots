@@ -536,3 +536,4 @@ class GradientField:
             self.path.append(currPos)
         #rospy.loginfo("Found goal. Path is:")
         v.vizConnectedPoints(self.path, color=[0,0,1])
+        return self.path

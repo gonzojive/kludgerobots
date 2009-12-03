@@ -30,7 +30,8 @@ class Part2():
         self._laser = laser.Laser()
         self._odoListener = None
         self._visualizer = viz.Visualizer()
-        self._move = move.MoveFromKeyboard(self._visualizer, self._goals)
+        #self._move = move.MoveFromKeyboard(self._visualizer, self._goals, self._laser, self._pFilter)
+        self._move = move.MoveFromKeyboard(self._visualizer, self._goals, self._laser, None)
         self._pFilter = None
         self.mapModel = None
         # I have no idea what good error values are
@@ -62,6 +63,7 @@ class Part2():
         self._pFilter.updateMapTf()    # initialize the best guess and sent it to tf
         self._pFilter.displayPoses()
         self._pFilter.start()   # threading function, calls our overloaded run() function and begins execution
+        self._move.avoider.pFilter = self._pFilter
         #self._pFilter.poseSet.printPoses()
 
     def initGradients(self):
@@ -99,6 +101,7 @@ class Part2():
             self._pFilter.poseAverageLock.release() # <-- release the pose lock -->
             self._localGradients.newLaserReading(newLaser)
             self._localGradients.updatePath(newPosition)
+            #self._move.publishNextMovement()
         self._move.publishNextMovement()
             
             
@@ -129,7 +132,8 @@ class Part2():
             pass
 
         self.initGradients()
-        self.initFilter()  
+        self.initFilter()
+        
         # while we are not shutdown by the ROS, keep updating
         while not rospy.is_shutdown():
             try:
@@ -141,15 +145,10 @@ class Part2():
             
             self.update(trans, rot)
             #send commands                
-            if self._gradients.initializationDone:  
-                self._pFilter.poseAverageLock.acquire()
-                newPose = copy.deepcopy(self._pFilter.poseAverage)
-                self._pFilter.poseAverageLock.release()
-                [linVel,angVel] = self._move.getNextCommand(newPose)
-                #publish commands if we haven't reached goal. else don't publish anything
-                self.velPublish.publish(Twist(Vector3(linVel,0,0),Vector3(0,0,angVel)))
-            pass    # give another thread a chance to run
-            rate.sleep()
+            #if self._gradients.initializationDone:  
+            
+            rate.sleep()    
+            
         rospy.loginfo("Exiting Kludge")
 
 
