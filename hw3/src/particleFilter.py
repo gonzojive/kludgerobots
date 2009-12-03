@@ -73,7 +73,7 @@ class ParticleFilter(threading.Thread):
         self.laserInMap = [self.poseAverage.inMapFrame(vLaserBeam) for vLaserBeam in laserBeamVectors]
         self.laserInMapFlag = True
         self.laserInMapLock.release()   # <-- release -->
-        self.viz.vizPoints(self.laserInMap, 1000)
+        self.viz.vizPoints(self.laserInMap, 1000, color=[1.0,0.0,0.0])
 
     # laserReadingsChanged()
     # if the laser readings changed recently, return true (and reset the flag)

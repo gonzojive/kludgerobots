@@ -115,7 +115,9 @@ class Part2():
         # initialize the robot global compass / odometry
         while not self.robotPosition().initialized:
             try:
-                (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', rospy.Time(0))
+                now = rospy.Time.now()
+                self.odoListener().waitForTransform('/odom', '/base_link', now, rospy.Duration(4.0))
+                (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', now)
                 self.robotPosition().initialized = True
             except (tf.LookupException, tf.ConnectivityException):
                 continue
@@ -131,7 +133,9 @@ class Part2():
         # while we are not shutdown by the ROS, keep updating
         while not rospy.is_shutdown():
             try:
-                (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', rospy.Time(0))
+                now = rospy.Time.now()
+                self.odoListener().waitForTransform('/odom', '/base_link', now, rospy.Duration(4.0))
+                (trans, rot) = self.odoListener().lookupTransform('/odom', '/base_link', now)
             except (tf.LookupException, tf.ConnectivityException):
                 continue
             
@@ -145,7 +149,8 @@ class Part2():
                 #publish commands if we haven't reached goal. else don't publish anything
                 self.velPublish.publish(Twist(Vector3(linVel,0,0),Vector3(0,0,angVel)))
             pass    # give another thread a chance to run
-            #rate.sleep()
+            rate.sleep()
+        rospy.loginfo("Exiting Kludge")
 
 
 if __name__ == '__main__':
