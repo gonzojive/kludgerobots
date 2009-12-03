@@ -62,6 +62,7 @@ class Visualizer:
 
         marker = Marker()
         marker.header.frame_id = "/map";
+        marker.header.stamp = rospy.Time.now()  # timestamp - I think ros automatically adds these
         marker.ns = "basic_shapes";
         if the_id:
             marker.id = the_id
@@ -94,6 +95,12 @@ class Visualizer:
                              [vector3d(start), vector3d(end)])        
         self.pub.publish(marker)
 
+    def vizSegments(self, points, name=None, color=None):
+        marker = self.makeMarker(markerType=Marker.LINE_STRIP, name=name, color=color)
+        marker.points = map (lambda pt : Point(x = pt[0], y = pt[1], z = pt[2]),
+                             map(vector3d, points))        
+        self.pub.publish(marker)
+
     def vizConnectedPoints(self, points, name=None, color=None):
         marker = self.makeMarker(markerType=Marker.LINE_STRIP, name=name, color=color)
         marker.points = map (lambda pt : Point(x = pt[0], y = pt[1], z = pt[2]),
@@ -110,6 +117,7 @@ class Visualizer:
         #rospy.loginfo("Deleting arrows")
         marker = Marker()
         marker.header.frame_id = "/map"
+        marker.header.stamp = rospy.Time.now()  # timestamp - I think ros automatically adds these
         marker.ns = "arrows"
         marker.action = Marker.DELETE
         marker.type = Marker.ARROW

@@ -203,7 +203,15 @@ class ParticleFilter(threading.Thread):
         self.poseAverageLock.acquire()
         self.poseAverage = newPose
         self.poseAverageLock.release()
+
+    def mapFrameToLaserFrame(self, pt):
+        self.poseAverageLock.acquire()
+        (origin, theta) = ([self.poseAverage.x, self.poseAverage.y], self.poseAverage.theta)
+        self.poseAverageLock.release()
         
+        vToPtGlobal = vector_minus(pt, origin)
+        rotated_vToGoal = vector_rotate_2d( vToPtGlobal, -1.0 * theta)
+        return rotated_vToGoal
 
     # predictionStep(): update each pose given old and new odometry readings
     # this function currently does no locking, so it assumes that no other thread is modifying poseSet.

@@ -4,41 +4,54 @@ import select
 import sys
 import goal
 from vector import *
+from nearestneighbor import *
 import util
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Vector3
 
+from obsavoid import ObstacleAvoider
+
 class MoveFromKeyboard:
-    def __init__(self, viz, g):
+    def __init__(self, viz, goalset, laserInterpreter, particleFilter):
         self.velPublish = rospy.Publisher("commands", Twist) # publish to "commands"
         self.viz = viz
-        self.goals = g
+        self.goals = goalset
         self.command = None
         self.repeatCommand = 0
         self.gradient = None
         self.localGradient = None
         self.pause = False
+        self.avoider = ObstacleAvoider(laserInterpreter, viz, particleFilter)
+        
 
     def setGradientMaps(self, gmap, local):
         self.gradient = gmap
         self.localGradient = local
+        self.avoider.setGradientMaps(gmap, local)
         
     # this is called by the main update loop of the program.  It uses the robot global compass
     # and laser interpreter to figure out where the obstacles are and move around
     def publishNextMovement(self):
         text = self.keyboardInput()
+
+        rospy.loginfo("Publishing next movement given keyboard: %s" % text if text else 'nada')
         if text:
             try:
                 self.parseText(text)
             except:
                 rospy.loginfo("Error with syntax!!!!")
                 raise
-        if self.command:
+        elif self.avoider.readyp():
+            rospy.loginfo("Ready! Moving")
+            self.avoider.publishNextMovement()
+        elif self.command:
+            rospy.loginfo("Not Ready :(!")
             self.velPublish.publish(Twist(Vector3(self.command[0],0,0),Vector3(0,0,self.command[1])))
             if self.repeatCommand == 0:
                 self.command = None
             if self.repeatCommand > 0:
                 self.repeatCommand -= 1
+            
 
     def keyboardInput(self):
         [r, w, x] = select.select([sys.stdin], [], [], 0)   # poll stdin
@@ -95,15 +108,24 @@ class MoveFromKeyboard:
             rospy.loginfo("Reached goal at (%0.2f, %0.2f)", self.goals.goalList()[i].x, self.goals.goalList()[i].y)
             self.goals.deleteGoal(i)
             self.gradient.setStartPosition(currPose.x, currPose.y)
-            self.gradient.setGoals(self.goals.goalList())
-            self.gradient.calculateCosts(70)
-            self.gradient.displayGradient(self.viz)
+            self.actOnGoalList()
         #rospy.loginfo("sending linearVel = %f,angVel =%f",linVel,angVel)
         return [linVel,angVel]
-            
-        
-        
-     
+
+    # called whenever
+    def actOnGoalList(self, niterations = 100):
+        rospy.loginfo("Setting goals for gradient field.")
+        self.gradient.setGoals(self.goals.goalList())
+        rospy.loginfo("Calculating gradient field.")
+        self.gradient.calculateCosts(niterations)
+        self.gradient.displayGradient(self.viz)
+        rospy.loginfo("Finding path to best goal.")
+        path = self.gradient.findPathGivenGradient(self.viz)
+        rospy.loginfo("Deciding which goal to visit first.")
+        goalList = self.goals.goalList()
+        if len(goalList) > 0:
+            (primaryGoal,index) = nearestNeighbor(self.goals.goalList(), path[len(path) - 1])
+        self.avoider.setGoal(primaryGoal)
 
     def parseText(self, text):
         cmd = text.split()
@@ -123,11 +145,10 @@ class MoveFromKeyboard:
                 self.goals.logGoals()
         elif cmd[0] == "start":
             if self.gradient:
-                self.gradient.setGoals(self.goals.goalList())
                 if len(cmd) >= 2:
-                    self.gradient.calculateCosts(int(cmd[1]))
+                    self.actOnGoalList(int(cmd[1]))
                 else:
-                    self.gradient.calculateCosts()
+                    self.actOnGoalList()
         elif cmd[0] == "run":
             if self.gradient:
                 if len(cmd) >= 2:
@@ -177,13 +198,8 @@ class MoveFromKeyboard:
                 rospy.loginfo("Setting goal (40, 45)")
                 g = goal.Goal(40, 45)
                 self.goals.newGoal(g)
-                self.gradient.setGoals(self.goals.goalList())
-                rospy.loginfo("Iterating 60 costs")
-                self.gradient.calculateCosts(60)
-                rospy.loginfo("Displaying gradient field")
-                self.gradient.displayGradient(self.viz)
-                rospy.loginfo("Calculating optimal path")
-                self.gradient.findPathGivenGradient(self.viz)
+                
+                self.actOnGoalList()
                 rospy.loginfo("Done with test")
         elif cmd[0] == "moveRobot":
             rospy.loginfo("Setting goal (40, 45)")
@@ -193,11 +209,7 @@ class MoveFromKeyboard:
             self.goals.newGoal(g)
             g = goal.Goal(40, 43)
             self.goals.newGoal(g)
-            self.gradient.setGoals(self.goals.goalList())
-            rospy.loginfo("Iterating 60 costs")
-            self.gradient.calculateCosts(60)
-            rospy.loginfo("Displaying gradient field")
-            self.gradient.displayGradient(self.viz)
+            self.actOnGoalList()
         elif cmd[0] == "move" or cmd[0] == "m":
             rospy.loginfo("New command: (%s, 0, 0) (0, 0, %s)", cmd[1], cmd[2])
             self.command = [float(cmd[1]), float(cmd[2])]
