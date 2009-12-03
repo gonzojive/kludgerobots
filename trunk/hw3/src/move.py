@@ -124,7 +124,7 @@ class MoveFromKeyboard:
         rospy.loginfo("Deciding which goal to visit first.")
         goalList = self.goals.goalList()
         if len(goalList) > 0:
-            (primaryGoal,index) = nearestNeighbor(self.goals.goalList(), path[len(path) - 1])
+            (primaryGoal,index, dist) = nearestNeighbor(self.goals.goalList(), path[len(path) - 1])
         self.avoider.setGoal(primaryGoal)
 
     def parseText(self, text):
