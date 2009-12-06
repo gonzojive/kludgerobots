@@ -19,7 +19,7 @@ class ParticleFilter:
         global context
         context = self
         self.mapModel = mapModel
-        self.poseSet = pose.PoseSet()
+        self.poseSet = pose.PoseSet(5000)
         self.poseSet.initializeUniformStochastic( [initialPose.x-0.5, initialPose.y+0.5], [initialPose.y-0.5, initialPose.y+0.5], [initialPose.theta-0.0436, initialPose.theta+0.0436] ) # 1m x 1m, 5 degrees
         self.laser = laser
         self.numBeamVectors = 10
@@ -33,10 +33,14 @@ class ParticleFilter:
     def mainLoop(self):
         self.cullIllegalPoses()
         self.updatePoseAverage()
-        laserScan = [[laserScan[i], i] for i in xrange(0,len(laserScan))]
+        laserScan = [[laserScan[i], i] for i in xrange(0,len(self.laser.ranges))]
         laserVectors = laser.laserScanToVectors(laserScan)
-        self.updateStep(laserVectors)
-        self.updatePoseAverage()
+        bestPose = self.updateStep(laserVectors)
+        # Need to do some testing to see whether the best pose or
+        # the average pose gives a better result
+        return bestPose
+        #return self.poseAverage
+        
 
     def updatePoseAverage(self):
         #rospy.loginfo("updating pose")
@@ -63,36 +67,20 @@ class ParticleFilter:
             newPose.weight = 1.0
         self.poseAverage = newPose
 
-    def mapFrameToLaserFrame(self, pt):
-        (origin, theta) = ([self.poseAverage.x, self.poseAverage.y], self.poseAverage.theta)
-        vToPtGlobal = vector_minus(pt, origin)
-        rotated_vToGoal = vector_rotate_2d( vToPtGlobal, -1.0 * theta)
-        return rotated_vToGoal
 
-    
     def updateStep(self, laserVectors):
-        # pseudocode:
-        # for all poses in particle filter:
-        #    transform the laser scans into that pose frame
-        #    calculate P(sensor reading | pose)
-        #       - sensor reading may consist of many laser beam readings which are multiplied together
-        #    P( sensor reading | pose) becomes the new weight for the particle
-        #    maybe normalize the weights
-        avgWeight = self.poseSet.avgWeight()
-        # this is not truly the weight per beam (that would be avgWeight ** float(self.numBeamVectors), but
-        # it should sort of maybe in some cases correct for differing number of beams per cast.  And it works!
-        avgWeightPerBeam = avgWeight * float(self.numBeamVectors)
-        varPerBeamWeight = statutil.variance( [o.weight * float(self.numBeamVectors) for o in self.poseSet.poses] )
-
-        poseNum = 0
-        sparseLaserVectors = laserVectors[0:-1:8]   # every 8th reading
+        sparseLaserVectors = laserVectors[0:-1:4]   # every 4th reading
+        best = pose.Pose()
+        maxWeight = -1
         for pose in self.poseSet.poses:
-            pSensorReadingGivenPose = self.pSensorReadingGivenPose(sparseLaserVectors, pose)
-            pose.weight = pSensorReadingGivenPose
-            poseNum += 1
+            pose.weight = self.pSensorReadingGivenPose(sparseLaserVectors, pose)
+            if pose.weight > maxWeight:
+                maxWeight = pose.weight
+                best = pose
         self.normalizeWeights()
         self.resampleStep()
-            
+        self.updatePoseAverage()
+
 
     def resampleStep(self):
         #for p in self.poseSet.poses:
