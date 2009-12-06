@@ -14,8 +14,8 @@ class Final:
         self.pose = None
 
     def initialize(self):
-        self.mapModel = mapmodel.MapModel()
         [self.pose, self.laser] = readInput()
+        self.mapModel = mapmodel.MapModel()
         self.pFilter = particlefilter.ParticleFilter(self.mapModel, self.pose, self.laser)
 
     def display(self):
@@ -32,8 +32,10 @@ def readInput():
     except:
         print fName + " does not exist"
         sys.exit()
+    print "Laser data loaded from " + fName
     p = map(float, infile.readline().split())
-    initialPose = pose.Pose(p[0], p[1], p[2]*math.pi/180.0)
+    offset = [0.2, 4.85] # the map offset - easier to put it in pose coords
+    initialPose = pose.Pose(p[0]-offset[0], p[1]-offset[1], p[2]*math.pi/180.0)
     infile.readline()
     readings = map(float, infile.readlines())
     lasers = laser.Laser(readings)
