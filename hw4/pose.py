@@ -32,7 +32,7 @@ class PoseSet:
     # __init__()
     # parameters:
     #   numPoses    --  the number of poses to track
-    def __init__(self, numPoses = 3000):
+    def __init__(self, numPoses):
         self.totalNumPoses = numPoses
         self.poses = []
 

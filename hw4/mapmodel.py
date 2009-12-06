@@ -1,11 +1,25 @@
 import vector
-import marshal
 import random
 import math
 import util
 import statutil
 import sys
 from PIL import Image
+
+# The input coordinates are fully retarded
+# Coordinates are given to us with:
+#   offset = input is -0.8 in x, 3.85 in y relative to the map
+#   reversal: map has y=0 at the top, input has y=0 at the bottom
+#   reflection: input has -y as the up direction
+#   swap: input gives us (y, x) instead of (x, y)
+offset = [-0.8, 3.85]
+size = [53.6, 53.0]
+# mapToWorld(): hasn't been tested, is probably wrong
+def mapToWorld(point):
+    return [-(size[1]-point[1]+offset[1]), point[0]+offset[0]]
+# worldToMap(): yes, the indices are messed up on purpose. it works
+def worldToMap(point):
+    return [point[1]-offset[0], size[1]+(point[0]+offset[1])]
 
 def mapFloatIntoDiscretizedBucket(f, minFloat, denom, numBuckets):
     # f prefix float i discrete
@@ -22,9 +36,9 @@ def mapFloatIntoDiscretizedBucket(f, minFloat, denom, numBuckets):
 class MapModel:
     def __init__(self):
         fname = "data/gates-full-grayscale.png"
-        im = Image.open(fname).convert("1")
+        self.im = Image.open(fname)
         print "Gates map loaded"
-        [self.width, self.height] = im.size
+        [self.width, self.height] = self.im.size
         self.resolution = 0.1
         self.fWidth = self.width * self.resolution
         self.fHeight = self.height * self.resolution
@@ -34,7 +48,7 @@ class MapModel:
         self.yMax = self.yMin + self.fHeight
         self.fSizeOfBucketDenomX = float(self.width)/float(self.xMax-self.xMin)
         self.fSizeOfBucketDenomY = float(self.height)/float(self.yMax-self.yMin)
-        self.grid = list(im.getdata())
+        self.grid = list(self.im.getdata())
         self.dgrid = self.getDistanceFromObstacleGrid()
 
 
@@ -42,22 +56,24 @@ class MapModel:
     # parameters:
     #   pose -- the pose to check against the map (assumed to be in map coordinates)
     def inBounds(self, pose):
-        return self.probeAtPoint([pose.x, pose.y]) < 0.5
+        return self.probeAtPoint([pose.x, pose.y]) > 0.8
 
     def pointInBounds(self, xy):
-        return self.probeAtPoint(xy) < 0.5
+        return self.probeAtPoint(xy) > 0.8
 
 
     def getDistanceFromObstacleGrid(self):
         result = None
-        fname = sys.path[0] + '/data/myGatesMapDist.marshal'
+        fname = sys.path[0] + '/data/gates-distance-transform.png'
         try:
-            stream = file(fname, 'r')
-            result = marshal.load(stream)
+            self.distanceIm = Image.open(fname)
+            result = map(lambda x: x / 10.0, list(self.distanceIm.getdata()))
             print "Distance map loaded"
         except IOError, exc:
-            print "Map failed to load from " + fname
+            print "Distance map failed to load from " + fname
             sys.exit()
+
+        
 
         # now we update the out of bounds obstacle grid locations
         # to double their distance
@@ -65,7 +81,6 @@ class MapModel:
             dist =  self.gridValueAtDiscreteCoordinate(result, xDiscrete, yDiscrete)
             dist = dist * 2.2
             self.setGridValueAtDiscreteCoordinate(result, xDiscrete, yDiscrete, dist)
-
         return result
         
 
@@ -191,17 +206,14 @@ class MapModel:
     # given a point returns the distance to the nearest obstacle.
     # Operates in constant time
     def distanceFromObstacleAtPoint(self, pt):
-        if self.initializedp():
-            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.width)
-            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.height)
-            if not xDiscrete or not yDiscrete:
-                return 5.0
-            # Given an X, Y coordinate, the map is access via data[Y*self.width + X]
-            # the grid has values between 0 and 100, and -1 for unknown
-            distanceToObstacle = self.dgrid[yDiscrete * self.width + xDiscrete]
-            return distanceToObstacle
-        else:
-            return -1
+        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.width)
+        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.height)
+        #print "coords: (%f, %f)  discrete: (%d, %d)" % (pt[0], pt[1], xDiscrete, yDiscrete)
+        if not xDiscrete or not yDiscrete:
+            return 5.0
+        # Given an X, Y coordinate, the map is access via data[Y*self.width + X]
+        distanceToObstacle = self.dgrid[yDiscrete * self.width + xDiscrete]
+        return distanceToObstacle
 
             
     # returns whether the map at the given point is occupied
@@ -211,41 +223,9 @@ class MapModel:
         # Given an X, Y coordinate, the map is access via data[Y*self.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
         probabilityOfOccupancy = self.grid[yDiscrete * self.width + xDiscrete]
-        #rospy.loginfo("xD = %d, yD = %d", xDiscrete, yDiscrete)       
-        #rospy.loginfo("val = %d", ord(probabilityOfOccupancy))
-        if probabilityOfOccupancy < 0:
-           probabilityOfOccupancy = 100
-        return float(probabilityOfOccupancy) / 100.0
+        return float(probabilityOfOccupancy) / 255.0
 
 
     def probeAtPointDiscrete(self, xDiscrete, yDiscrete):
         probabilityOfOccupancy = ord(self.grid[yDiscrete * self.width + xDiscrete])
-        #rospy.loginfo("xD = %d, yD = %d", xDiscrete, yDiscrete)       
-        #rospy.loginfo("val = %d", ord(probabilityOfOccupancy))
-        if probabilityOfOccupancy < 0:
-           probabilityOfOccupancy = 100
-        return float(probabilityOfOccupancy) / 100.0
-
-
-    # returns the maximum distance from vSTart to vEnd that can be gone in the map
-    # before bumping into an obstacle
-    def castVector(self, vStart, vEnd):
-        # v is the vector to cast relative to vStart
-        v = vector_minus(vEnd, vStart)
-        vMagnitude = vector_length(v)
-        # v normalized
-        vUnit = vector_normalize(v)
-        # samples are taken every sampleSize meters along the way
-        # from vStart to vEnd
-        sampleSize = .10 # 10 cm at a time
-
-        scale = 0
-        while scale <= vMagnitude:
-            # vUnit * scale + vStart = probe point
-            probePt = vector_add(vStart, vector_scale(vUnit, scale))
-            if self.probeAtPoint(probePt):
-                return scale
-            scale += sampleSize
-
-        return vMagnitude
-    
+        return float(probabilityOfOccupancy) / 255.0

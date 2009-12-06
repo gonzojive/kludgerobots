@@ -19,7 +19,17 @@ class Final:
         self.pFilter = particlefilter.ParticleFilter(self.mapModel, self.pose, self.laser)
 
     def display(self):
-        pass
+        self.mapModel.im.show()
+
+    def userInput(self):
+        self.mapModel.im.show()
+        while 1:
+            instr = raw_input("Enter a point: ")
+            p = mapmodel.worldToMap(map(float, instr.split()))
+            dist = self.mapModel.distanceFromObstacleAtPoint(p)
+            value = self.mapModel.probeAtPoint(p)
+            inB = self.mapModel.pointInBounds(p)
+            print "Point (%0.2f, %0.2f): inBounds = %d, distToObstacle = %0.2f" % (p[0], p[1], inB, dist)
 
 
 def readInput():
@@ -34,15 +44,17 @@ def readInput():
         sys.exit()
     print "Laser data loaded from " + fName
     p = map(float, infile.readline().split())
-    offset = [0.2, 4.85] # the map offset - easier to put it in pose coords
-    initialPose = pose.Pose(p[0]-offset[0], p[1]-offset[1], p[2]*math.pi/180.0)
+    pT = mapmodel.worldToMap(p[0:2])   # Transform to map coords
+    initialPose = pose.Pose(pT[0], pT[1], p[2]*math.pi/180.0)
     infile.readline()
     readings = map(float, infile.readlines())
     lasers = laser.Laser(readings)
     return [initialPose, lasers]
 
 
+
 if __name__ == '__main__':
     app = Final()
     app.initialize()
+    app.userInput()
     app.display()
