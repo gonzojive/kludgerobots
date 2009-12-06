@@ -17,24 +17,25 @@ def mapFloatIntoDiscretizedBucket(f, minFloat, denom, numBuckets):
     else:
         return iBucket
 
-
+# Even though it's the map that's offset, it will simplify calculations greatly
+# if we just assume the map to be at (0,0) and translate the positions of objects
 class MapModel:
     def __init__(self):
-        self.fHeight = 10.0
-        self.fWidth = 10.0
-        self.xMax = 0.0
+        fname = "data/gates-full-grayscale.png"
+        im = Image.open(fname).convert("1")
+        print "Gates map loaded"
+        [self.width, self.height] = im.size
+        self.resolution = 0.1
+        self.fWidth = self.width * self.resolution
+        self.fHeight = self.height * self.resolution
         self.xMin = 0.0
+        self.xMax = self.xMin + self.fWidth
         self.yMin = 0.0
-        self.yMin = 0.0
-        self.fSizeOfBucketDenomX = 0.0
-        self.fSizeOfBucketDenomY = 0.0
-        im = Image.open("data/gates-full-grayscale.png")
-
-        def mapCallback(mapOccGrid):
-            self.meta = mapOccGrid.info
-            self.grid = mapOccGrid.data[:]
-            self._annotateMapMetaData()
-            self.dgrid = self.getDistanceFromObstacleGrid()
+        self.yMax = self.yMin + self.fHeight
+        self.fSizeOfBucketDenomX = float(self.width)/float(self.xMax-self.xMin)
+        self.fSizeOfBucketDenomY = float(self.height)/float(self.yMax-self.yMin)
+        self.grid = list(im.getdata())
+        self.dgrid = self.getDistanceFromObstacleGrid()
 
 
     # inBounds(): returns True if a given pose is in a legal position on the map
@@ -46,20 +47,6 @@ class MapModel:
     def pointInBounds(self, xy):
         return self.probeAtPoint(xy) < 0.5
 
-    def _annotateMapMetaData(self):
-        meta = self.meta
-
-        resolution = meta.resolution
-        self.fHeight = resolution * float(meta.height)
-        self.fWidth = resolution * float(meta.width)
-        
-        self.xMin = meta.origin.position.x
-        self.xMax = self.xMin + self.fWidth
-        self.yMin = meta.origin.position.y
-        self.yMax= self.yMin + self.fHeight
-        self.fSizeOfBucketDenomX = float(meta.width)/float(self.xMax-self.xMin)
-        self.fSizeOfBucketDenomY = float(meta.height)/float(self.yMax-self.yMin)
-
 
     def getDistanceFromObstacleGrid(self):
         result = None
@@ -67,9 +54,10 @@ class MapModel:
         try:
             stream = file(fname, 'r')
             result = marshal.load(stream)
+            print "Distance map loaded"
         except IOError, exc:
             print "Map failed to load from " + fname
-            #result = self.computeDistanceFromObstacleGrid()
+            sys.exit()
 
         # now we update the out of bounds obstacle grid locations
         # to double their distance
@@ -83,18 +71,18 @@ class MapModel:
 
     # returns the float-valued point that corresponds to the given grid cell
     def discreteGridRefToReal(self, xDiscrete, yDiscrete):
-        res = self.meta.resolution
+        res = self.resolution
         return [float(xDiscrete) * res + self.xMin, float(yDiscrete) * res + self.yMin]
 
     def gridValueAtDiscreteCoordinate(self, grid, xDiscrete, yDiscrete):
-        return grid[yDiscrete * self.meta.width + xDiscrete]
+        return grid[yDiscrete * self.width + xDiscrete]
 
     def setGridValueAtDiscreteCoordinate(self, grid, xDiscrete, yDiscrete, value):
-        grid[yDiscrete * self.meta.width + xDiscrete] = value
+        grid[yDiscrete * self.width + xDiscrete] = value
 
     def allDiscreteGridCoordinates(self):
-        for xDiscrete in xrange(0, self.meta.width):
-            for yDiscrete in xrange(0, self.meta.height):
+        for xDiscrete in xrange(0, self.width):
+            for yDiscrete in xrange(0, self.height):
                 yield [xDiscrete, yDiscrete]
 
     # generates all in-bound grid coords
@@ -127,7 +115,7 @@ class MapModel:
                 return False
 
         boolgrid = map(obstaclepFromProbability, map(ord, self.grid))
-        numWildFireUpdates = min(self.meta.height, self.meta.width, 25)
+        numWildFireUpdates = min(self.height, self.width, 25)
         nearestObstacleGrid = boolgrid[:]
 
         numOccupied = sum([1 if x else 0 for x in boolgrid])
@@ -145,8 +133,8 @@ class MapModel:
         # returns a list of obstacles that surround the given grid coordinate
         def knownNearbyObstacles(xDiscrete, yDiscrete):
             def pts ():
-                for i in xrange(max(0, xDiscrete-1), min(xDiscrete+2, self.meta.width)):
-                    for j in xrange(max(0, yDiscrete-1), min(yDiscrete+2, self.meta.height)):
+                for i in xrange(max(0, xDiscrete-1), min(xDiscrete+2, self.width)):
+                    for j in xrange(max(0, yDiscrete-1), min(yDiscrete+2, self.height)):
                         yield [i, j]
 
             return [self.gridValueAtDiscreteCoordinate(nearestObstacleGrid, x, y) for [x, y] in pts()]
@@ -204,13 +192,13 @@ class MapModel:
     # Operates in constant time
     def distanceFromObstacleAtPoint(self, pt):
         if self.initializedp():
-            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.meta.width)
-            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.meta.height)
+            xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.width)
+            yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.height)
             if not xDiscrete or not yDiscrete:
                 return 5.0
-            # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
+            # Given an X, Y coordinate, the map is access via data[Y*self.width + X]
             # the grid has values between 0 and 100, and -1 for unknown
-            distanceToObstacle = self.dgrid[yDiscrete * self.meta.width + xDiscrete]
+            distanceToObstacle = self.dgrid[yDiscrete * self.width + xDiscrete]
             return distanceToObstacle
         else:
             return -1
@@ -218,13 +206,11 @@ class MapModel:
             
     # returns whether the map at the given point is occupied
     def probeAtPoint(self, pt):
-        # here we the
-        meta = self.meta
-        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.meta.width)
-        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.meta.height)
-        # Given an X, Y coordinate, the map is access via data[Y*meta.width + X]
+        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.width)
+        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.height)
+        # Given an X, Y coordinate, the map is access via data[Y*self.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
-        probabilityOfOccupancy = self.grid[yDiscrete * meta.width + xDiscrete]
+        probabilityOfOccupancy = self.grid[yDiscrete * self.width + xDiscrete]
         #rospy.loginfo("xD = %d, yD = %d", xDiscrete, yDiscrete)       
         #rospy.loginfo("val = %d", ord(probabilityOfOccupancy))
         if probabilityOfOccupancy < 0:
@@ -233,9 +219,7 @@ class MapModel:
 
 
     def probeAtPointDiscrete(self, xDiscrete, yDiscrete):
-        # here we the
-        meta = self.meta
-        probabilityOfOccupancy = ord(self.grid[yDiscrete * meta.width + xDiscrete])
+        probabilityOfOccupancy = ord(self.grid[yDiscrete * self.width + xDiscrete])
         #rospy.loginfo("xD = %d, yD = %d", xDiscrete, yDiscrete)       
         #rospy.loginfo("val = %d", ord(probabilityOfOccupancy))
         if probabilityOfOccupancy < 0:
