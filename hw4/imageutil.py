@@ -38,7 +38,7 @@ def showColorImageRowCol(data, width, height):
     
     
 #function to draw a circle given a center,a radius and an image to overlay on
-def showCircleAtPoint(centerx,centery,radius,imagePath = "/home/ckalyan/Desktop/cs225b_code/hw4/data/gates-full-stage.png"):#"/home/ckalyan/Desktop"):
+def showCircleAtPoint(centerx,centery,radius,imagePath = "data/gates-full-grayscale.png"):#"/home/ckalyan/Desktop"):
     im = PIL.Image.open(imagePath)
     draw = ImageDraw.Draw(im) # Create a draw object
     #the circle is drawn as an ellipse within a bounding box with(left,upper,right,lower) coordinates given. 
@@ -53,7 +53,7 @@ def showCircleAtPoint(centerx,centery,radius,imagePath = "/home/ckalyan/Desktop/
     print "drawing circle"
 
 
-def showArrowAtPointAndAngle(x,y,angle,imagePath = "/home/ckalyan/Desktop/cs225b_code/hw4/data/gates-full-stage.png"):
+def showArrowAtPointAndAngle(x,y,angle,imagePath = "data/gates-full-grayscale.png"):
     im = PIL.Image.open(imagePath)
     draw = ImageDraw.Draw(im)
     #arrow starts at point(x,y) and extends 2 pixels ahead at the given angle
