@@ -54,6 +54,9 @@ def vector_normalize(v):
     l = vector_length(v)
     return map(lambda x : x / l, v)
 
+def vector_distance(v1, v2):
+    return vector_length(vector_minus(v1, v2))
+
 def vector_dot(v,w):
     return sum(map( lambda a,b: a * b, v, w))
 
