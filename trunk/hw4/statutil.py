@@ -69,7 +69,6 @@ def lowVarianceSample2(objects, weights, newSize):
     if newSize > 0:
         sumWeights = float(sum(weights))
         weights = [float(x) / sumWeights for x in weights]
-        print sum(weights)
         invSize = 1.0 / float(newSize)
         r = random.random() * invSize
         i = 0

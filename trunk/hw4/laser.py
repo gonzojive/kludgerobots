@@ -17,7 +17,7 @@ class Laser:
 def laserRangeAngle(i, numReadings):
     i = numReadings - i - 1
     if numReadings > 0:
-        return (1.0 - float(i) / float(numReadings)) * pi
+        return (1.0 - float(i) / float(numReadings)) * math.pi
     else:
         return 0 #degenerate
 
