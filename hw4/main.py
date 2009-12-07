@@ -18,6 +18,11 @@ class Final:
         self.mapModel = mapmodel.MapModel()
         self.pFilter = particlefilter.ParticleFilter(self.mapModel, self.pose, self.laser)
 
+    def run(self):
+        # map and object lasers are still relative to the pose at this point
+        [position, mapLaserPoints, objectLaserPoints] = self.pFilter.run()
+        print "Estimated position: " + position.toStr()
+
     def display(self):
         self.mapModel.im.show()
 
@@ -56,5 +61,6 @@ def readInput():
 if __name__ == '__main__':
     app = Final()
     app.initialize()
-    app.userInput()
+    #app.userInput()
+    app.run()
     app.display()
