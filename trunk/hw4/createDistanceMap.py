@@ -2,6 +2,12 @@ from PIL import Image
 import util
 import math
 
+# This file is a stand-alone file: it should not be run during execution of hw4
+# It takes in the gates map, and uses LPN and the Sethian wavefront update to
+# calculate distance from the nearest obstacle at each point.
+# The result is output to 2 different .png files, one of which is scaled to 255
+# for better viewing, and one of which holds the raw values (better for working with)
+
 class MapPoint:
     def __init__(self, xIndex, yIndex, xPos, yPos):
         self.xInd = xIndex

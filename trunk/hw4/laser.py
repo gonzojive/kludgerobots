@@ -2,6 +2,10 @@ import math
 import util
 import vector
 
+# Laser class
+# members: polarPoints, a list of [r, theta] values giving the laser readings
+#          points, a list of [x, y] values giving the laser readings
+
 class Laser:
     def __init__(self, readings, rightMostDegrees, intervalDegrees): # constructor
         self.maxRadius = 12.0  # laser only accurate to 12 feet
