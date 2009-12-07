@@ -21,6 +21,8 @@ def mapToWorld(point):
 def worldToMap(point):
     return [point[1]-offset[0], size[1]+(point[0]+offset[1])]
 
+
+# Helper function to grab a map index from a float value
 def mapFloatIntoDiscretizedBucket(f, minFloat, denom, numBuckets):
     # f prefix float i discrete
     iBucket = int( float(f - minFloat) * denom)
@@ -73,10 +75,8 @@ class MapModel:
             print "Distance map failed to load from " + fname
             sys.exit()
 
-        
-
         # now we update the out of bounds obstacle grid locations
-        # to double their distance
+        # to double their distance. leftover from hw3, is this still necessary?
         for [ xDiscrete, yDiscrete ] in self.allOutOfBoundsDiscreteGridCoordinates():
             dist =  self.gridValueAtDiscreteCoordinate(result, xDiscrete, yDiscrete)
             dist = dist * 2.2

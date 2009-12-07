@@ -9,44 +9,54 @@ import cProfile
 import vector
 
 
+# Stuff for profiling, might as well leave it in
 context = None
-
 def profiledParticleFilter():
     return context.mainLoop()
 
+# Particle filter, specialized for the final project
 class ParticleFilter:
     def __init__(self, mapModel, initialPose, laser):
         global context
         context = self
-        self.mapModel = mapModel
-        self.poseSet = pose.PoseSet(4000)
-        self.poseSet.initializeUniformStochastic( [initialPose.x-0.5, initialPose.x+0.5], [initialPose.y-0.5, initialPose.y+0.5], [initialPose.theta-0.0436, initialPose.theta+0.0436] ) # 1m x 1m, 5 degrees
-        self.laser = laser
-        self.numBeamVectors = 10
+        self.mapModel = mapModel    # already initialized by main
+        self.poseSet = pose.PoseSet(4000)   # Number of poses to try
+        # Kurt says position is within 1m and about 5 degrees of accurate
+        self.poseSet.initializeUniformStochastic( [initialPose.x-0.5, initialPose.x+0.5], [initialPose.y-0.5, initialPose.y+0.5], [initialPose.theta-0.0436, initialPose.theta+0.0436] )
+        self.laser = laser  # already initialized
   
 
+    # Initializes the profiler or just runs the main loop
     def run(self):
         import particlefilter
         #cProfile.run('particleFilter.profiledParticleFilter()', '/tmp/pfilterProfStats')
         return particlefilter.profiledParticleFilter()
 
+
+    # The main particle filter loop
+    # For each test pose, transforms the laser readings onto that pose, and
+    # checks to see how accurate the fit is with the map
+    # Returns the best guess for the pose, the laser readings that corresponded
+    # with the map, and the laser readings that didn't fit with the map
     def mainLoop(self):
-        self.cullIllegalPoses()
-        self.updatePoseAverage()
+        self.cullIllegalPoses() # Probably won't be any, but it can't hurt
+        self.updatePoseAverage()    # Not really necessary
         laserVectors = []
         # Only use points whose distance is < 12m
         for i in range(len(self.laser.points)):
             if self.laser.polarPoints[i][0] < 12:
                 laserVectors.append(self.laser.points[i])
-        bestPose = self.updateStep(laserVectors)
-        # Need to do some testing to see whether the best pose or
-        # the average pose gives a better result (so far, looks like average)
-        #returnPose = bestPose
-        returnPose = self.poseAverage
+        bestPose = self.updateStep(laserVectors)    # do the probability calculations
+
+        # It seems that the pose average gives a more consistent result than the
+        # highest probability pose.
+        #returnPose = bestPose  # highest probability pose
+        returnPose = self.poseAverage   # average probability post
         [mapLasers, objectLasers] = self.classifyLasers(laserVectors, returnPose)
         return [returnPose, mapLasers, objectLasers]
         
 
+    # Calculates the pose average based on all poses and their weights
     def updatePoseAverage(self):
         #rospy.loginfo("updating pose")
         thetaX = 0
@@ -73,20 +83,22 @@ class ParticleFilter:
         self.poseAverage = newPose
 
 
+    # Calculates the probabilities of each pose, given the laser readings
     def updateStep(self, laserVectors):
         sparseLaserVectors = laserVectors[0:-1:4]   # every 4th reading
-        maxWeight = -1
+        maxWeight = -1  # to help find the highest probability pose
         for pose in self.poseSet.poses:
             pose.weight = self.pSensorReadingGivenPose(sparseLaserVectors, pose)
             if pose.weight > maxWeight:
                 maxWeight = pose.weight
                 best = pose
         self.normalizeWeights()
-        self.resampleStep()
+        self.resampleStep() # not sure if we should still do this
         self.updatePoseAverage()
         return best
 
 
+    # Resample step: uses low-variance sampling to coalesce poses
     def resampleStep(self):
         #for p in self.poseSet.poses:
         weights = [p.weight for p in self.poseSet.poses]
@@ -96,26 +108,29 @@ class ParticleFilter:
         self.poseSet.poses = sampledPoses
 
 
+    # pSensorReadingGivenPose()
+    # given the lasers in cartesian coords and the pose, calculate the
+    # probability of that pose
     def pSensorReadingGivenPose(self, laserBeamVectors, pose):
         # pseudocode:
         # for each laser beam in the laser scan, calculate the probabability
-        self.numBeamVectors = len(laserBeamVectors)
         pLaserBeamsGivenPose = [self.pLaserBeamGivenPose(vLaserBeam, pose) for vLaserBeam in laserBeamVectors]
         sumLogProbabilities = 0.0
         for p in pLaserBeamsGivenPose:
             sumLogProbabilities += math.log(p)
 
         result = math.exp(sumLogProbabilities)
-        #rospy.loginfo("sumLogProbabilities = %f,  p = %f", sumLogProbabilities, result)
-        #result = sumLogProbabilities
         return result
 
-    def classifyLasers(self, laserVecs, pose):
+
+    # classifyLasers()
+    # Given the lasers in cartesian coords and the best guess for a pose, determine
+    # which laser readings are close enough to be considered part of the map
+    def classifyLasers(self, laserVecs, pose, thresh = 1.5):
         globalLaserVecs = [pose.inMapFrame(l) for l in laserVecs]
         dists = [self.mapModel.distanceFromObstacleAtPoint(l) for l in globalLaserVecs]
         mapLasers = []
         objectLasers = []
-        thresh = 1.5
         print "Using distance cutoff = %0.2f to classify lasers" % (thresh)
         for i in range(len(laserVecs)):
             if dists[i] >= thresh:   # doesn't fit in the map
@@ -137,6 +152,8 @@ class ParticleFilter:
         return weightGauss*pGauss + weightUniform*pUniform
 
 
+    # cullIllegalPoses()
+    # gets rid of all poses outside the map boundaries
     def cullIllegalPoses(self):
         self.poseSet.poses = filter(lambda p: self.mapModel.inBounds(p), self.poseSet.poses)
         
