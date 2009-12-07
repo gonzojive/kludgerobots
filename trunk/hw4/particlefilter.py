@@ -33,15 +33,18 @@ class ParticleFilter:
     def mainLoop(self):
         self.cullIllegalPoses()
         self.updatePoseAverage()
-        laserScan = [[self.laser.ranges[i], i] for i in xrange(0,len(self.laser.ranges))]
-        laserVectors = laser.laserScanToVectors(laserScan)
+        laserVectors = []
+        # Only use points whose distance is < 12m
+        for i in range(len(self.laser.points)):
+            if self.laser.polarPoints[i][0] < 12:
+                laserVectors.append(self.laser.points[i])
         bestPose = self.updateStep(laserVectors)
         # Need to do some testing to see whether the best pose or
         # the average pose gives a better result (so far, looks like average)
-        #retVal = bestPose
-        retVal = self.poseAverage
-        [mapLasers, objectLasers] = self.classifyLasers(laserVectors, retVal)
-        return [retVal, mapLasers, objectLasers]
+        #returnPose = bestPose
+        returnPose = self.poseAverage
+        [mapLasers, objectLasers] = self.classifyLasers(laserVectors, returnPose)
+        return [returnPose, mapLasers, objectLasers]
         
 
     def updatePoseAverage(self):
@@ -119,7 +122,7 @@ class ParticleFilter:
                 objectLasers.append(laserVecs[i])
             else:   # close enough to the map
                 mapLasers.append(laserVecs[i])
-        print "%d points in the map, %d points that don't fit" % (len(mapLasers), len(objectLasers))
+        print "%d points match the map, %d points don't fit" % (len(mapLasers), len(objectLasers))
         return [mapLasers, objectLasers]
 
 

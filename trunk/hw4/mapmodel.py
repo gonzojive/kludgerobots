@@ -64,7 +64,7 @@ class MapModel:
 
     def getDistanceFromObstacleGrid(self):
         result = None
-        fname = sys.path[0] + '/data/gates-distance-transform.png'
+        fname = "data/gates-distance-transform.png"
         try:
             self.distanceIm = Image.open(fname)
             result = map(lambda x: x / 10.0, list(self.distanceIm.getdata()))
