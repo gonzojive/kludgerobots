@@ -6,6 +6,8 @@ import pose
 import math
 import sys
 
+interactive = False
+
 def readHw4Input():
     if len(sys.argv) > 1:
         fName = "data/lr" + sys.argv[1] + ".dat"

@@ -90,3 +90,21 @@ def showHistPlotOfNums(nums, numFields=50):
 
     plt.show()
     
+class MapImage:
+    def __init__(self):
+        imagePath = "data/gates-full-grayscale.png"
+        self.image = PIL.Image.open(imagePath)
+
+    def drawCircle(self, center, radius, fill=(255, 0, 0)):
+        draw = ImageDraw.Draw(self.image) # Create a draw object
+        #the circle is drawn as an ellipse within a bounding box with(left,upper,right,lower) coordinates given.
+        #convert the (center,radius) to this system now
+        #ASSUMPTION!! -  the center and the radius are within the bounds of the image!!
+        left  = center[0] - radius;
+        upper = center[1] - radius;
+        right = center[0] + radius;
+        lower = center[1] + radius;
+        draw.ellipse((left,upper,right,lower), fill=fill) # Draw a circle
+
+    def show(self):
+        self.image.show()

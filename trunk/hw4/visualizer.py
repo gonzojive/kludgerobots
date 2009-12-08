@@ -3,16 +3,76 @@ import PIL.Image
 import PIL.ImageDraw
 from PIL import Image,ImageDraw
 import util
+from vector import *
+import wx
 
+class MapFrame(wx.Frame):
+    def __init__(self, parent, id, title, mapImage):
+        wx.Frame.__init__(self, parent, id, title, size = mapImage.image.size)
+        self.bitmap = mapImage.bitmap
+        self.Centre()
+        wx.EVT_PAINT(self, self.OnPaint)
+          
 
-class visualizer:
-    def __init__(self,filename):
+    def OnPaint(self, event):
+        dc = wx.PaintDC(self)
+        dc.DrawBitmap(self.bitmap, 0, 0)
+          
+
+    
+
+class MapImage:
+    def __init__(self,filename="data/gates-full-grayscale.png"):
         self.filename = filename
-        self.im = PIL.Image.open(self.filename)
-        self.imageBounds = im.size
-        self.draw = ImageDraw.Draw(self.im)
+        fileImage = PIL.Image.open(self.filename)
+        scaleFactor = 2.0
+        self.pixelsPerMapUnit = 10.0 * scaleFactor
+        self.image = fileImage.resize(map(int, vector_scale(fileImage.size, scaleFactor))).convert("RGB")
+        self.draw = ImageDraw.Draw(self.image)
+
+
+    def get_bitmap(self):
+        """
+        wx-compatible bitmap image
+        """
+        def pilToImage(pil,alpha=True):
+            if alpha:
+                image = wx.EmptyImage( *pil.size )
+                image.SetData( pil.convert( "RGB").tostring() )
+                image.SetAlphaData(pil.convert("RGBA").tostring()[3::4])
+            else:
+                image = wx.EmptyImage(pil.size[0], pil.size[1])
+                new_image = pil.convert('RGB')
+                data = new_image.tostring()
+                image.SetData(data)
+                return image
+
+        return pilToImage(self.image, False).ConvertToBitmap()
+
+    
+    
+    def get_imageBounds(self):
+        return self.image.size
+
+    imageBounds = property(get_imageBounds, None)
+    bitmap = property(get_bitmap, None)
+
+    def pointToImageXY(self, point):
+        return map(int, vector_scale(point, self.pixelsPerMapUnit))
             
     #function to draw a circle given a center,a radius and an image to overlay on
+    def drawCircle(self, center, radius, fill=255):
+        #the circle is drawn as an ellipse within a bounding box with(left,upper,right,lower) coordinates given.
+        #convert the (center,radius) to this system now
+        #ASSUMPTION!! -  the center and the radius are within the bounds of the image!!
+        center = self.pointToImageXY(center)
+        radius = int(float(radius) * self.pixelsPerMapUnit)
+        left  = center[0] - radius;
+        upper = center[1] - radius;
+        right = center[0] + radius;
+        lower = center[1] + radius;
+        self.draw.ellipse((left,upper,right,lower), fill=fill) # Draw a circle
+
     def showCircleAtPoint(self,centerx,centery,radius):
         #the circle is drawn as an ellipse within a bounding box with(left,upper,right,lower) coordinates given. 
         #convert the (center,radius) to this system now
@@ -29,7 +89,7 @@ class visualizer:
     def checkWithinBounds(self,x,y):
         if x < self.imageBounds[0] and y < self.imageBounds[1]:
             return True
-        else
+        else:
             return False
             
     #function to show an arrow at the given point given an angle
@@ -59,4 +119,4 @@ class visualizer:
             self.draw.line((endx,endy,arrowx,arrowy),fill =128)
         
     def show(self):
-        self.im.show()
+        self.image.show()
