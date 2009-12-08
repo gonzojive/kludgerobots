@@ -11,7 +11,8 @@ NUMERIC_TOL = .000001
 def polarToCartesian(r, theta):
   x = r * cos(theta)
   y = r * sin(theta)
-  return [y, -x]
+  return [x, y]
+  #return [y, -x]
 
 def radiansToDegrees(rads):
     return rads * 180.0/math.pi

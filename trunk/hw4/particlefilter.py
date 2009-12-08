@@ -8,6 +8,7 @@ import random
 import cProfile
 import vector
 
+MAX_LASER_READING = 11.9
 
 # Stuff for profiling, might as well leave it in
 context = None
@@ -44,7 +45,7 @@ class ParticleFilter:
         laserVectors = []
         # Only use points whose distance is < 12m
         for i in range(len(self.laser.points)):
-            if self.laser.polarPoints[i][0] < 12:
+            if self.laser.polarPoints[i][0] < MAX_LASER_READING:
                 laserVectors.append(self.laser.points[i])
         bestPose = self.updateStep(laserVectors)    # do the probability calculations
 
@@ -146,10 +147,11 @@ class ParticleFilter:
         d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
         stdDev = 1.34
         pGauss = statutil.gaussianProbability(0, stdDev, d)
-        pUniform = 1.0/12.0
+        pUniform = 1.0/MAX_LASER_READING
         weightGauss = .2
         weightUniform = .8
-        return weightGauss*pGauss + weightUniform*pUniform
+        prob = weightGauss*pGauss + weightUniform*pUniform
+        return prob
 
 
     # cullIllegalPoses()

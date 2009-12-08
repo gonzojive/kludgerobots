@@ -19,7 +19,7 @@ class Pose:
     # rotation and apply the translation
     def inMapFrame(self, pt):
         # first rotate the pt about the z axis by the given angle
-        ptRotated = vector.vector_rotate_2d(pt, 1.0 * self.theta)
+        ptRotated = vector.vector_rotate_2d([pt[0], pt[1]], self.theta)
         return vector.vector_add(ptRotated, [ self.x, self.y])
 
     def toStr(self):
