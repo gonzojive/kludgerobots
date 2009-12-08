@@ -13,10 +13,10 @@ class Circle:
         return "<Circle radius %f at %s >" % (self.radius, self.center)
 
 #def nearbyPoints(points, pointIndex, n=5):
-#    i = 
-    
+#    i =
 
-def findCircles(points, radius):
+
+def findCircles(points, radius, cutoff=hw4.DEFAULT_CUTOFF):
     """
     Given a sequence of points relative to the robot, detects circles of a given radius and returns
     their centers.
@@ -35,14 +35,14 @@ def findCircles(points, radius):
         errors = [e * e for e in errors]
         meanError = sum(errors) / float(len(filteredDistances))
             
-        if len(filteredDistances) > 3:
+        if len(filteredDistances) > 2:
             errorDistribution.append(meanError)
             hypotheticalCircle.error = meanError
-            if meanError < .00033:
+            if meanError < cutoff:
                 print "ACCEPTED circle with mean error %f and errors %s" % (meanError, errors)
                 yield hypotheticalCircle
             elif meanError < .02:
-                print "Rejected circle with mean error %f and errors %s" % (meanError, errors)
+                pass #         print "Rejected circle with mean error %f and errors %s" % (meanError, errors)
     errorDistribution.sort()
     print "Errors: %s" % errorDistribution
     pylab.hist([e for e in errorDistribution], bins=50, range=(0, .001))

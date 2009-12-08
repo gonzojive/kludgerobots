@@ -8,18 +8,22 @@ import wx
 
 class MapFrame(wx.Frame):
     def __init__(self, parent, id, title, mapImage):
-        wx.Frame.__init__(self, parent, id, title, size = mapImage.image.size)
+        wx.Frame.__init__(self, parent, id, title, size = vector_add(mapImage.image.size, [0, 0]))
         self.bitmap = mapImage.bitmap
         self.Centre()
         wx.EVT_PAINT(self, self.OnPaint)
-          
+        #self.Add(cutoffSlider)
 
+    def set_mapImage(self, mi):
+        self.bitmap = mi.bitmap
+        self.Refresh()
+        
+
+    mapImage = property(None, set_mapImage)
+          
     def OnPaint(self, event):
         dc = wx.PaintDC(self)
-        dc.DrawBitmap(self.bitmap, 0, 0)
-          
-
-    
+        dc.DrawBitmap(self.bitmap, 10, 30)
 
 class MapImage:
     def __init__(self,filename="data/gates-full-grayscale.png"):
