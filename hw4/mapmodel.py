@@ -79,7 +79,7 @@ class MapModel:
         # to double their distance. leftover from hw3, is this still necessary?
         for [ xDiscrete, yDiscrete ] in self.allOutOfBoundsDiscreteGridCoordinates():
             dist =  self.gridValueAtDiscreteCoordinate(result, xDiscrete, yDiscrete)
-            dist = dist * 2.2
+            #dist = dist * 2.2
             self.setGridValueAtDiscreteCoordinate(result, xDiscrete, yDiscrete, dist)
         return result
         

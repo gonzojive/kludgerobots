@@ -5,6 +5,8 @@ import time
 import wx
 import hw4
 import sys
+import mapmodel
+import particlefilter
 
 class CircleDetectParametersFrame(wx.Frame):
     def __init__(self, parent, id, title, thresholdCallback=None, minThreshold=0.0, maxThreshold=.001):
@@ -34,6 +36,10 @@ class CircleDetectParametersFrame(wx.Frame):
 
 def main():
     [pose, laser] = readHw4Input()
+    theMap = mapmodel.MapModel()
+    pFilter = particlefilter.ParticleFilter(theMap, pose, laser)
+    [newPose, mapLasers, objectLasers] = pFilter.run()
+    print "Actual pose: ", pose.toStr()
 
     def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF):
         radius = .3

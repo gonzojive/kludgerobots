@@ -44,7 +44,7 @@ def findCircles(points, radius, cutoff=hw4.DEFAULT_CUTOFF):
             elif meanError < .02:
                 pass #         print "Rejected circle with mean error %f and errors %s" % (meanError, errors)
     errorDistribution.sort()
-    print "Errors: %s" % errorDistribution
+    #print "Errors: %s" % errorDistribution
     pylab.hist([e for e in errorDistribution], bins=50, range=(0, .001))
     if hw4.interactive:
         pylab.show()
