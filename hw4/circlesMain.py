@@ -6,11 +6,39 @@ import wx
 import hw4
 import sys
 
+class CircleDetectParametersFrame(wx.Frame):
+    def __init__(self, parent, id, title, thresholdCallback=None, minThreshold=0.0, maxThreshold=.001):
+        wx.Frame.__init__(self, parent, id, title, size = (200, 200))
+        panel = wx.Panel(self, -1)
+        box = wx.BoxSizer(wx.HORIZONTAL)
+        self.cutoffSlider = wx.Slider(panel, 1, 0, 0, 1000, size=(120, -1))
+        self.sliderValue = wx.StaticText(panel, -1, ".0001", (45, 25), style=wx.ALIGN_CENTRE)
+        box.Add(self.cutoffSlider)
+        box.Add(self.sliderValue)
+        panel.SetSizer(box)
+        panel.Bind(wx.EVT_SCROLL_CHANGED, self.onAdjust)
+
+        self.thresholdCallback = thresholdCallback
+        self.minThreshold = minThreshold
+        self.maxThreshold = maxThreshold
+
+        #self.Add(cutoffSlider)
+        
+
+    def onAdjust(self, event):
+        f = float(self.cutoffSlider.GetValue()) / (self.cutoffSlider.GetMax() - self.cutoffSlider.GetMin())
+        threshold = self.minThreshold + (self.maxThreshold - self.minThreshold) * f
+        self.sliderValue.SetLabel("%f" % threshold)
+        if self.thresholdCallback:
+            self.thresholdCallback(self, threshold)
+
 def main():
     [pose, laser] = readHw4Input()
-    for radius in [.3]:
+
+    def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF):
+        radius = .3
         mi = MapImage()
-        circles = [c for c in findCircles(laser.points, radius)]
+        circles = [c for c in findCircles(laser.points, radius, cutoff)]
         
         if len(circles) > 0:
             minError = min(map(lambda x : x.error, circles))
@@ -25,13 +53,20 @@ def main():
         for pt in laser.points:
             mi.drawCircle(pose.inMapFrame(pt), .05, fill=(255,0,0))
             
-        #mi.show()
         mi.image.save("output%i.png" % (1 if len(sys.argv) == 1 else int(sys.argv[1])), "PNG")
-        if hw4.interactive:
-            app = wx.App()
-            frame = MapFrame(None, -1, "thingy", mi)
-            frame.Show()
-            app.MainLoop()
+        return mi
+            
+
+    if hw4.interactive:
+        app = wx.App()
+        mframe = MapFrame(None, -1, "thingy", findAndDrawCircles())
+        def callback(frame, cutoff):
+            mframe.mapImage = findAndDrawCircles(cutoff)
+
+        controlFrame = CircleDetectParametersFrame(mframe, -1, "Circle Detection Controls",  thresholdCallback=callback)
+        controlFrame.Show()
+        mframe.Show()
+        app.MainLoop()
         
             
 

@@ -6,7 +6,9 @@ import pose
 import math
 import sys
 
-interactive = False
+interactive = True
+
+DEFAULT_CUTOFF = 0.00034
 
 def readHw4Input():
     if len(sys.argv) > 1:
