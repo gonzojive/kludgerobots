@@ -24,13 +24,13 @@ class ParticleFilter:
         bounds = [1, 1, util.d2r(5)]
         self.poseSet.initializeUniformStochastic( [initialPose.x-bounds[0], initialPose.x+bounds[0]], [initialPose.y-bounds[1], initialPose.y+bounds[1]], [initialPose.theta-bounds[2], initialPose.theta+bounds[2]] )
         self.laser = laser  # already initialized
-        self.mapThresh = 1.5    # maximum distance to be part of the map
+        self.mapThresh = 0.5    # maximum distance to be part of the map
   
 
     # Initializes the profiler or just runs the main loop
     def run(self):
         import particlefilter
-        #cProfile.run('particleFilter.profiledParticleFilter()', '/tmp/pfilterProfStats')
+        #cProfile.run('particlefilter.profiledParticleFilter()', '/tmp/pfilterProfStats')
         return particlefilter.profiledParticleFilter()
 
 
@@ -147,11 +147,11 @@ class ParticleFilter:
         d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
         if d > self.mapThresh and self.mapModel.pointInBounds(vLaserBeamInMapFrame):
             return 1
-        stdDev = 0.4
+        stdDev = 0.2
         pGauss = statutil.gaussianProbability(0, stdDev, d)
         pUniform = 1.0/self.laser.maxRadius
-        weightGauss = 1
-        weightUniform = 0
+        weightGauss = .9
+        weightUniform = .1
         prob = weightGauss*pGauss + weightUniform*pUniform
         return prob
 
