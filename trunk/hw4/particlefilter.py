@@ -19,9 +19,9 @@ class ParticleFilter:
         global context
         context = self
         self.mapModel = mapModel    # already initialized by main
-        self.poseSet = pose.PoseSet(5000)   # Number of poses to try
+        self.poseSet = pose.PoseSet(4000)   # Number of poses to try
         # Kurt says position is within 1m and about 5 degrees of accurate
-        bounds = [1, 1, util.r2d(5)]
+        bounds = [1, 1, util.d2r(5)]
         self.poseSet.initializeUniformStochastic( [initialPose.x-bounds[0], initialPose.x+bounds[0]], [initialPose.y-bounds[1], initialPose.y+bounds[1]], [initialPose.theta-bounds[2], initialPose.theta+bounds[2]] )
         self.laser = laser  # already initialized
         self.mapThresh = 1.5    # maximum distance to be part of the map
@@ -145,7 +145,7 @@ class ParticleFilter:
     def pLaserBeamGivenPose(self, vLaserBeam, pose):
         vLaserBeamInMapFrame = pose.inMapFrame(vLaserBeam)
         d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
-        if d > self.mapThresh:
+        if d > self.mapThresh and self.mapModel.pointInBounds(vLaserBeamInMapFrame):
             return 1
         stdDev = 0.4
         pGauss = statutil.gaussianProbability(0, stdDev, d)
