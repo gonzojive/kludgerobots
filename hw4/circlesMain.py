@@ -7,6 +7,16 @@ import hw4
 import sys
 import mapmodel
 import particlefilter
+import time
+
+curTime = 0
+timeDiff = 0
+
+def updateTimes():
+    global curTime
+    global timeDiff
+    timeDiff = time.clock() - curTime
+    curTime += timeDiff
 
 class CircleDetectParametersFrame(wx.Frame):
     def __init__(self, parent, id, title, thresholdCallback=None, minThreshold=0.0, maxThreshold=.001):
@@ -35,13 +45,25 @@ class CircleDetectParametersFrame(wx.Frame):
             self.thresholdCallback(self, threshold)
 
 def main():
+    updateTimes()
+    print "Reading input ...",
+    sys.stdout.flush()
     [pose, laser] = readHw4Input()
     theMap = mapmodel.MapModel()
+    updateTimes()
+    print "done (%0.2f s)" % (timeDiff)
+    print "Running filter ...",
+    sys.stdout.flush()
     pFilter = particlefilter.ParticleFilter(theMap, pose, laser)
     [pose, mapLasers, objectLasers] = pFilter.run()
-    print "Actual pose: ", pose.toStr()
+    updateTimes()
+    print "done (%0.2f s)" % (timeDiff)
+    #print "Actual pose: ", pose.toStr()
 
     def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF):
+        updateTimes()
+        print "Finding circles ...",
+        sys.stdout.flush()
         radius = .3
         mi = MapImage()
         circles = [c for c in findCircles(laser.points, radius, cutoff)]
@@ -57,11 +79,14 @@ def main():
                 mi.drawCircle(center, circle.radius, fill=color)
             
         for pt in mapLasers:
-            mi.drawCircle(pose.inMapFrame(pt), .05, fill=(0,255,0))
+            mi.drawCircle(pose.inMapFrame(pt), .05, fill=(0,0,255))
         for pt in objectLasers:
             mi.drawCircle(pose.inMapFrame(pt), .05, fill=(255, 0, 0))
+        mi.drawCircle(pose.inMapFrame([0,0]), .3, fill=(255, 0, 255))
             
         mi.image.save("output%i.png" % (1 if len(sys.argv) == 1 else int(sys.argv[1])), "PNG")
+        updateTimes()
+        print "done (%0.2f s)" % (timeDiff)
         return mi
             
 

@@ -31,7 +31,7 @@ class MapModel:
     def __init__(self):
         fname = "data/gates-full-grayscale.png"
         self.im = Image.open(fname)
-        print "Gates map loaded"
+        #print "Gates map loaded"
         [self.width, self.height] = self.im.size
         self.resolution = 0.1
         self.fWidth = self.width * self.resolution
@@ -83,7 +83,7 @@ class MapModel:
         try:
             self.distanceIm = Image.open(fname)
             result = map(lambda x: x / 10.0, list(self.distanceIm.getdata()))
-            print "Distance map loaded"
+            #print "Distance map loaded"
         except IOError, exc:
             print "Distance map failed to load from " + fname
             sys.exit()
