@@ -56,8 +56,10 @@ def main():
                 color = (0,int(255.0 * errPercentile),0)
                 mi.drawCircle(center, circle.radius, fill=color)
             
-        for pt in laser.points:
-            mi.drawCircle(pose.inMapFrame(pt), .05, fill=(255,0,0))
+        for pt in mapLasers:
+            mi.drawCircle(pose.inMapFrame(pt), .05, fill=(0,255,0))
+        for pt in objectLasers:
+            mi.drawCircle(pose.inMapFrame(pt), .05, fill=(255, 0, 0))
             
         mi.image.save("output%i.png" % (1 if len(sys.argv) == 1 else int(sys.argv[1])), "PNG")
         return mi

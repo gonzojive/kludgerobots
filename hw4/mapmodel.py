@@ -25,17 +25,6 @@ def worldToMap(point):
     return [x, y, a]
 
 
-# Helper function to grab a map index from a float value
-def mapFloatIntoDiscretizedBucket(f, minFloat, denom, numBuckets):
-    # f prefix float i discrete
-    iBucket = int( float(f - minFloat) * denom)
-    if iBucket < 0:
-        return 0
-    elif iBucket >= numBuckets:
-        return numBuckets - 1
-    else:
-        return iBucket
-
 # Even though it's the map that's offset, it will simplify calculations greatly
 # if we just assume the map to be at (0,0) and translate the positions of objects
 class MapModel:
@@ -65,6 +54,27 @@ class MapModel:
 
     def pointInBounds(self, xy):
         return self.probeAtPoint(xy) > 0.8
+
+    # Helper function to grab a map index from a float value
+    def mapFloatIntoDiscretizedBucketX(self, f):
+        # f prefix float i discrete
+        iBucket = int( (f - self.xMin) * self.fSizeOfBucketDenomX )
+        if iBucket < 0:
+            return 0
+        elif iBucket >= self.width:
+            return self.width - 1
+        else:
+            return iBucket
+
+    def mapFloatIntoDiscretizedBucketY(self, f):
+        # f prefix float i discrete
+        iBucket = int( (f - self.yMin) * self.fSizeOfBucketDenomY )
+        if iBucket < 0:
+            return 0
+        elif iBucket >= self.height:
+            return self.height - 1
+        else:
+            return iBucket
 
 
     def getDistanceFromObstacleGrid(self):
@@ -209,11 +219,9 @@ class MapModel:
     # given a point returns the distance to the nearest obstacle.
     # Operates in constant time
     def distanceFromObstacleAtPoint(self, pt):
-        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.width)
-        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.height)
+        xDiscrete = self.mapFloatIntoDiscretizedBucketX(pt[0])
+        yDiscrete = self.mapFloatIntoDiscretizedBucketY(pt[1])
         #print "coords: (%f, %f)  discrete: (%d, %d)" % (pt[0], pt[1], xDiscrete, yDiscrete)
-        if not xDiscrete or not yDiscrete:
-            return 5.0
         # Given an X, Y coordinate, the map is access via data[Y*self.width + X]
         distanceToObstacle = self.dgrid[yDiscrete * self.width + xDiscrete]
         return distanceToObstacle
@@ -221,8 +229,8 @@ class MapModel:
             
     # returns whether the map at the given point is occupied
     def probeAtPoint(self, pt):
-        xDiscrete = mapFloatIntoDiscretizedBucket(pt[0],  self.xMin, self.fSizeOfBucketDenomX, self.width)
-        yDiscrete = mapFloatIntoDiscretizedBucket(pt[1],  self.yMin, self.fSizeOfBucketDenomY, self.height)
+        xDiscrete = self.mapFloatIntoDiscretizedBucketX(pt[0])
+        yDiscrete = self.mapFloatIntoDiscretizedBucketY(pt[1])
         # Given an X, Y coordinate, the map is access via data[Y*self.width + X]
         # the grid has values between 0 and 100, and -1 for unknown
         probabilityOfOccupancy = self.grid[yDiscrete * self.width + xDiscrete]
