@@ -19,7 +19,7 @@ class ParticleFilter:
         global context
         context = self
         self.mapModel = mapModel    # already initialized by main
-        self.poseSet = pose.PoseSet(4000)   # Number of poses to try
+        self.poseSet = pose.PoseSet(5000)   # Number of poses to try
         # Kurt says position is within 1m and about 5 degrees of accurate
         bounds = [1, 1, util.d2r(5)]
         self.poseSet.initializeUniformStochastic( [initialPose.x-bounds[0], initialPose.x+bounds[0]], [initialPose.y-bounds[1], initialPose.y+bounds[1]], [initialPose.theta-bounds[2], initialPose.theta+bounds[2]] )
@@ -73,13 +73,13 @@ class ParticleFilter:
         if totalWeight < util.NUMERIC_TOL:
             newPose.x = 0.0
             newPose.y = 0.0
-            newPose.theta = 0.0
+            newPose.setTheta(0.0)
             newPose.weight = 0.0
         else:
             denom = 1.0/totalWeight
             newPose.x *= denom
             newPose.y *= denom
-            newPose.theta = math.atan2(thetaY*denom, thetaX*denom)
+            newPose.setTheta(math.atan2(thetaY*denom, thetaX*denom))
             newPose.weight = 1.0
         self.poseAverage = newPose
 
@@ -132,13 +132,13 @@ class ParticleFilter:
         dists = [self.mapModel.distanceFromObstacleAtPoint(l) for l in globalLaserVecs]
         mapLasers = []
         objectLasers = []
-        print "Using distance cutoff = %0.2f to classify lasers" % (self.mapThresh)
+        #print "Using distance cutoff = %0.2f to classify lasers" % (self.mapThresh)
         for i in range(len(laserVecs)):
             if dists[i] >= self.mapThresh:   # doesn't fit in the map
                 objectLasers.append(laserVecs[i])
             else:   # close enough to the map
                 mapLasers.append(laserVecs[i])
-        print "%d points match the map, %d points don't fit" % (len(mapLasers), len(objectLasers))
+        #print "%d points match the map, %d points don't fit" % (len(mapLasers), len(objectLasers))
         return [mapLasers, objectLasers]
 
 

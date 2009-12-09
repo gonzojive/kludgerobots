@@ -20,7 +20,7 @@ def readHw4Input():
     except:
         print fName + " does not exist"
         sys.exit()
-    print "Laser data loaded from " + fName
+    #print "Laser data loaded from " + fName
     p = map(float, infile.readline().split())
     pT = mapmodel.worldToMap(p)   # Transform to map coords
     initialPose = pose.Pose(pT[0], pT[1], pT[2])

@@ -11,6 +11,13 @@ class Pose:
         self.y = y
         self.theta = theta
         self.weight = weight
+        self.sinTheta = math.sin(theta) # much faster to do it once now
+        self.cosTheta = math.cos(theta)
+
+    def setTheta(self, t):
+        self.theta = t
+        self.sinTheta = math.sin(t)
+        self.cosTheta = math.cos(t)
 
     def clonePose(self):
         return Pose(self.x, self.y, self.theta, self.weight)
@@ -19,8 +26,8 @@ class Pose:
     # rotation and apply the translation
     def inMapFrame(self, pt):
         # first rotate the pt about the z axis by the given angle
-        ptRotated = vector.vector_rotate_2d([pt[0], pt[1]], self.theta)
-        return vector.vector_add(ptRotated, [self.x, self.y])
+        return [pt[0] * self.cosTheta - pt[1] * self.sinTheta + self.x,
+                pt[0] * self.sinTheta + pt[1] * self.cosTheta + self.y]
 
     def toStr(self):
         return "(%0.2f, %0.2f) at %0.2f degrees" % (self.x, self.y, util.r2d(self.theta))
