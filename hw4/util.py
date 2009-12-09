@@ -11,7 +11,7 @@ NUMERIC_TOL = .000001
 def polarToCartesian(r, theta):
   x = r * cos(theta)
   y = r * sin(theta)
-  return [x, y]
+  return [x, -y]    # negative y to match map frame
   #return [y, -x]
 
 def radiansToDegrees(rads):

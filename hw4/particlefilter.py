@@ -8,8 +8,6 @@ import random
 import cProfile
 import vector
 
-MAX_LASER_READING = 11.9
-
 # Stuff for profiling, might as well leave it in
 context = None
 def profiledParticleFilter():
@@ -21,10 +19,12 @@ class ParticleFilter:
         global context
         context = self
         self.mapModel = mapModel    # already initialized by main
-        self.poseSet = pose.PoseSet(4000)   # Number of poses to try
+        self.poseSet = pose.PoseSet(5000)   # Number of poses to try
         # Kurt says position is within 1m and about 5 degrees of accurate
-        self.poseSet.initializeUniformStochastic( [initialPose.x-0.5, initialPose.x+0.5], [initialPose.y-0.5, initialPose.y+0.5], [initialPose.theta-0.0436, initialPose.theta+0.0436] )
+        bounds = [1, 1, util.r2d(5)]
+        self.poseSet.initializeUniformStochastic( [initialPose.x-bounds[0], initialPose.x+bounds[0]], [initialPose.y-bounds[1], initialPose.y+bounds[1]], [initialPose.theta-bounds[2], initialPose.theta+bounds[2]] )
         self.laser = laser  # already initialized
+        self.mapThresh = 1.5    # maximum distance to be part of the map
   
 
     # Initializes the profiler or just runs the main loop
@@ -45,7 +45,7 @@ class ParticleFilter:
         laserVectors = []
         # Only use points whose distance is < 12m
         for i in range(len(self.laser.points)):
-            if self.laser.polarPoints[i][0] < MAX_LASER_READING:
+            if self.laser.polarPoints[i][0] < self.laser.maxRadius:
                 laserVectors.append(self.laser.points[i])
         bestPose = self.updateStep(laserVectors)    # do the probability calculations
 
@@ -67,8 +67,8 @@ class ParticleFilter:
         for p in self.poseSet.poses:
             newPose.x += p.x*p.weight
             newPose.y += p.y*p.weight
-            thetaX += math.cos(p.theta)
-            thetaY += math.sin(p.theta)
+            thetaX += math.cos(p.theta)*p.weight
+            thetaY += math.sin(p.theta)*p.weight
             totalWeight += p.weight
         if totalWeight < util.NUMERIC_TOL:
             newPose.x = 0.0
@@ -127,14 +127,14 @@ class ParticleFilter:
     # classifyLasers()
     # Given the lasers in cartesian coords and the best guess for a pose, determine
     # which laser readings are close enough to be considered part of the map
-    def classifyLasers(self, laserVecs, pose, thresh = 1.5):
+    def classifyLasers(self, laserVecs, pose):
         globalLaserVecs = [pose.inMapFrame(l) for l in laserVecs]
         dists = [self.mapModel.distanceFromObstacleAtPoint(l) for l in globalLaserVecs]
         mapLasers = []
         objectLasers = []
-        print "Using distance cutoff = %0.2f to classify lasers" % (thresh)
+        print "Using distance cutoff = %0.2f to classify lasers" % (self.mapThresh)
         for i in range(len(laserVecs)):
-            if dists[i] >= thresh:   # doesn't fit in the map
+            if dists[i] >= self.mapThresh:   # doesn't fit in the map
                 objectLasers.append(laserVecs[i])
             else:   # close enough to the map
                 mapLasers.append(laserVecs[i])
@@ -145,11 +145,13 @@ class ParticleFilter:
     def pLaserBeamGivenPose(self, vLaserBeam, pose):
         vLaserBeamInMapFrame = pose.inMapFrame(vLaserBeam)
         d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
-        stdDev = 1.34
+        if d > self.mapThresh:
+            return 1
+        stdDev = 0.4
         pGauss = statutil.gaussianProbability(0, stdDev, d)
-        pUniform = 1.0/MAX_LASER_READING
-        weightGauss = .2
-        weightUniform = .8
+        pUniform = 1.0/self.laser.maxRadius
+        weightGauss = 1
+        weightUniform = 0
         prob = weightGauss*pGauss + weightUniform*pUniform
         return prob
 

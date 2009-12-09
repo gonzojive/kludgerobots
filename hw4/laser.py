@@ -8,7 +8,7 @@ import vector
 
 class Laser:
     def __init__(self, readings, rightMostDegrees, intervalDegrees): # constructor
-        self.maxRadius = 12.0  # laser only accurate to 12 feet
+        self.maxRadius = 11.9  # laser only accurate to 11.9 feet
         self.maxTheta = math.pi  # theta in [0, pi]
         polarPoints = [(r, util.d2r(rightMostDegrees + intervalDegrees*float(i))) for (i, r) in enumerate(readings)]
         self.polarPoints = polarPoints

@@ -8,18 +8,21 @@ from PIL import Image
 
 # The input coordinates are fully retarded
 # Coordinates are given to us with:
-#   offset = input is -0.8 in x, 3.85 in y relative to the map
+#   offset = input is 0.2 in x, -4.85 in y relative to the map
 #   reversal: map has y=0 at the top, input has y=0 at the bottom
 #   reflection: input has -y as the up direction
 #   swap: input gives us (y, x) instead of (x, y)
-offset = [-0.8, 3.85]
+offset = [0.2, -4.85]
 size = [53.6, 53.0]
-# mapToWorld(): hasn't been tested, is probably wrong
+# mapToWorld(): hasn't been tested, but I think it's right
 def mapToWorld(point):
-    return [-(size[1]-point[1]+offset[1]), point[0]+offset[0]]
+    return [point[1]-size[1]+offset[1], point[0]+offset[0], util.r2d(util.normalizeAngle360(7.8539816-point[2]))]
 # worldToMap(): yes, the indices are messed up on purpose. it works
 def worldToMap(point):
-    return [point[1]-offset[0], size[1]+(point[0]+offset[1])]
+    x = point[1] - offset[0]
+    y = point[0] + size[1] - offset[1]
+    a = util.normalizeAngle180(util.d2r(450 - point[2]))
+    return [x, y, a]
 
 
 # Helper function to grab a map index from a float value

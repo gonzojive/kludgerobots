@@ -38,7 +38,7 @@ def main():
     [pose, laser] = readHw4Input()
     theMap = mapmodel.MapModel()
     pFilter = particlefilter.ParticleFilter(theMap, pose, laser)
-    [newPose, mapLasers, objectLasers] = pFilter.run()
+    [pose, mapLasers, objectLasers] = pFilter.run()
     print "Actual pose: ", pose.toStr()
 
     def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF):
@@ -49,7 +49,7 @@ def main():
         if len(circles) > 0:
             minError = min(map(lambda x : x.error, circles))
             maxError = max(map(lambda x : x.error, circles))
-            print "Found %i circle centers with radius %f" % (len(circles), radius)
+            #print "Found %i circle centers with radius %f" % (len(circles), radius)
             for circle in circles:
                 center = pose.inMapFrame(circle.center)
                 errPercentile = 1.0 - (circle.error - minError) / (maxError - minError + .000001)
