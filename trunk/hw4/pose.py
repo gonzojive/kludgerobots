@@ -20,10 +20,10 @@ class Pose:
     def inMapFrame(self, pt):
         # first rotate the pt about the z axis by the given angle
         ptRotated = vector.vector_rotate_2d([pt[0], pt[1]], self.theta)
-        return vector.vector_add(ptRotated, [ self.x, self.y])
+        return vector.vector_add(ptRotated, [self.x, self.y])
 
     def toStr(self):
-        return "(%0.2f, %0.2f) at %0.2f degrees - weight = %0.2f" % (self.x, self.y, util.r2d(self.theta), self.weight)
+        return "(%0.2f, %0.2f) at %0.2f degrees" % (self.x, self.y, util.r2d(self.theta))
             
 
 # class PoseSet

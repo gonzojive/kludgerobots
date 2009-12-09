@@ -22,8 +22,8 @@ def readHw4Input():
         sys.exit()
     print "Laser data loaded from " + fName
     p = map(float, infile.readline().split())
-    pT = mapmodel.worldToMap(p[0:2])   # Transform to map coords
-    initialPose = pose.Pose(pT[0], pT[1], p[2]*math.pi/180.0)
+    pT = mapmodel.worldToMap(p)   # Transform to map coords
+    initialPose = pose.Pose(pT[0], pT[1], pT[2])
     [numReadings, rightMostDegrees, leftMostDegrees, intervalDegrees] =  map(float, infile.readline().split())
     readings = map(float, infile.readlines())
     lasers = laser.Laser(readings, rightMostDegrees, intervalDegrees)
