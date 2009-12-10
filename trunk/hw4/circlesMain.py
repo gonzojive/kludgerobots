@@ -35,7 +35,14 @@ class CircleDetectParametersFrame(wx.Frame):
         self.maxThreshold = maxThreshold
 
         #self.Add(cutoffSlider)
-        
+
+    def set_threshold(self, threshold):
+        f = (threshold - self.minThreshold) / (self.minThreshold + self.maxThreshold)
+        v = int(f * (self.cutoffSlider.GetMax() - self.cutoffSlider.GetMin()) + self.cutoffSlider.GetMin())
+        self.sliderValue.SetLabel("%f" % f)
+        self.cutoffSlider.SetValue(v)
+
+    threshold = property(None, set_threshold)
 
     def onAdjust(self, event):
         f = float(self.cutoffSlider.GetValue()) / (self.cutoffSlider.GetMax() - self.cutoffSlider.GetMin())
@@ -84,7 +91,12 @@ def main():
             mi.drawCircle(pose.inMapFrame(pt), .05, fill=(255, 0, 0))
         mi.drawCircle(pose.inMapFrame([0,0]), .3, fill=(255, 0, 255))
             
-        mi.image.save("output%i.png" % (1 if len(sys.argv) == 1 else int(sys.argv[1])), "PNG")
+        try:
+            fname = "output%i.png" % (1 if len(sys.argv) == 1 else int(sys.argv[1]))
+        except:
+            fname = "output.png"
+            
+        mi.image.save(fname, "PNG")
         updateTimes()
         print "done (%0.2f s)" % (timeDiff)
         return mi
@@ -93,10 +105,11 @@ def main():
     if hw4.interactive:
         app = wx.App()
         mframe = MapFrame(None, -1, "thingy", findAndDrawCircles())
-        def callback(frame, cutoff):
+        def thresholdCallback(frame, cutoff):
             mframe.mapImage = findAndDrawCircles(cutoff)
 
-        controlFrame = CircleDetectParametersFrame(mframe, -1, "Circle Detection Controls",  thresholdCallback=callback)
+        controlFrame = CircleDetectParametersFrame(mframe, -1, "Circle Detection Controls",  thresholdCallback=thresholdCallback)
+        controlFrame.threshold = hw4.DEFAULT_CUTOFF
         controlFrame.Show()
         mframe.Show()
         app.MainLoop()

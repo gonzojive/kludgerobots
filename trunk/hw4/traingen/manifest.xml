@@ -1,0 +1,22 @@
+<package>
+  <description brief="CS225b hw3">
+
+     hw3
+
+  </description>
+  <author>Team Kludge</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/hw1</url>
+  <depend package="std_msgs"/>
+  <depend package="stage"/>
+  <depend package="rospy"/>
+  <depend package="sensor_msgs"/>
+  <depend package="rviz"/>
+  <depend package="laser_assembler"/>
+  <depend package="laser_geometry"/>
+  <depend package="laser_filters"/>
+
+</package>
+
+
