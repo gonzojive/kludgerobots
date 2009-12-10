@@ -49,6 +49,7 @@ class Circle:
     def get_featureVector(self):
         angleSpanned = self.angleSpannedByCircumferencePoints()
         meanSquaredError = self.meanError
+        meanOneNormError = mean(self.oneNormedErrors)
         sortedErrors = self.oneNormedErrors[:]
         sortedErrors.sort()
         clusterCenter = [1.95, -0.03] # [angleSpanned, meanSquaredError]
@@ -58,7 +59,7 @@ class Circle:
                 sortedErrors[len(sortedErrors)-1],
                 sortedErrors[len(sortedErrors)-2],
                 sortedErrors[len(sortedErrors)-3],
-                vector_distance(clusterCenter, [angleSpanned, meanSquaredError]),
+                vector_distance(clusterCenter, [angleSpanned, meanOneNormError]),
 #                vector_length(self.center),
                 len(self.circumferencePoints),
                 angleSpanned]
