@@ -6,13 +6,16 @@ import pose
 import math
 import sys
 
-interactive = True
+interactive = True #False
+training = False
 
 DEFAULT_CUTOFF = 0.00034
 
 def readHw4Input():
     tfName = None
     if len(sys.argv) > 2:   # training test
+        global training
+        training = True
         try:
             fName = "traingen/training-pairs/input%d.dat" % int(sys.argv[1])
             tfName = "traingen/training-pairs/label%d.dat" % int(sys.argv[1])
@@ -43,6 +46,7 @@ def readHw4Input():
     lasers = laser.Laser(readings, rightMostDegrees, intervalDegrees)
     if tfName:
         circles = [map(float, c.strip().split()) for c in truthfile.readlines()]
+        circles = [ [x[1], x[0]] for x in circles]
     else:
         circles = None
     return [initialPose, lasers, circles]
