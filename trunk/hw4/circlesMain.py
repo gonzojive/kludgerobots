@@ -93,7 +93,7 @@ def main():
         mi.drawCircle(pose.inMapFrame([0,0]), .3, fill=(255, 0, 255))
         if actualCircles:
             for c in actualCircles:
-                mi.drawCircle(pose.inMapFrame(c), 0.05, fill=(255, 127, 0))
+                mi.drawCircle(pose.inMapFrame([c[1], c[0]]), 0.3, fill=(255, 127, 0))
 
         print "drawing circle at:",pose.inMapFrame([0,0])
         #draw the arrow to show the pose
