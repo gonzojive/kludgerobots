@@ -65,7 +65,7 @@ def main():
     [pose, mapLasers, objectLasers] = pFilter.run()
     updateTimes()
     print "done (%0.2f s)" % (timeDiff)
-    #print "Actual pose: ", pose.toStr()
+    print "Actual pose: ", pose.toStr()
 
     def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF):
         updateTimes()
@@ -91,15 +91,19 @@ def main():
         for pt in objectLasers:
             mi.drawCircle(pose.inMapFrame(pt), .05, fill=(255, 0, 0))
         mi.drawCircle(pose.inMapFrame([0,0]), .3, fill=(255, 0, 255))
-            
+        print "drawing circle at:",pose.inMapFrame([0,0])
+        #draw the arrow to show the pose
+        temp = pose.inMapFrame([0,0])
+        mi.showArrow(temp[0],temp[1],pose.theta)    
         try:
             fname = "output%i.png" % (1 if len(sys.argv) == 1 else int(sys.argv[1]))
         except:
             fname = "output.png"
-            
+       
         mi.image.save(fname, "PNG")
         updateTimes()
         print "done (%0.2f s)" % (timeDiff)
+        #mi.show()
         return mi
             
 
