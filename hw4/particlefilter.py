@@ -51,8 +51,8 @@ class ParticleFilter:
 
         # It seems that the pose average gives a more consistent result than the
         # highest probability pose.
-        #returnPose = bestPose  # highest probability pose
-        returnPose = self.poseAverage   # average probability post
+        returnPose = bestPose  # highest probability pose
+        #returnPose = self.poseAverage   # average probability post
         [mapLasers, objectLasers] = self.classifyLasers(laserVectors, returnPose)
         return [returnPose, mapLasers, objectLasers]
         
