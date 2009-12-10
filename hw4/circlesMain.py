@@ -87,7 +87,8 @@ def outputArffHeader(f):
 @attribute 'max-error' real
 @attribute '2max-error' real
 @attribute '3max-error' real
-@attribute 'dist-from-cluster' real
+@attribute 'cluster1-dist' real
+@attribute 'cluster2-dist' real
 %@attribute 'distance-to-center' real
 @attribute 'num-circumference-points' real
 @attribute 'circumference-degrees' real

@@ -52,14 +52,16 @@ class Circle:
         meanOneNormError = mean(self.oneNormedErrors)
         sortedErrors = self.oneNormedErrors[:]
         sortedErrors.sort()
-        clusterCenter = [1.95, -0.03] # [angleSpanned, meanSquaredError]
-        
+        angleOneNormClusterCenter = [1.95, -0.03] # [angleSpanned, meanSquaredError]
+        angleInfiniteNormClusterCenter = [2.00, -0.03]
+        infiniteNorm = sortedErrors[len(sortedErrors)-1]
         return [meanSquaredError,
                 mean(self.oneNormedErrors),
                 sortedErrors[len(sortedErrors)-1],
                 sortedErrors[len(sortedErrors)-2],
                 sortedErrors[len(sortedErrors)-3],
-                vector_distance(clusterCenter, [angleSpanned, meanOneNormError]),
+                vector_distance(angleOneNormClusterCenter, [angleSpanned, meanOneNormError]),
+                vector_distance(angleInfiniteNormClusterCenter, [angleSpanned, infiniteNorm]),
 #                vector_length(self.center),
                 len(self.circumferencePoints),
                 angleSpanned]
@@ -80,12 +82,13 @@ class Circle:
         2max-error                                16.6823
         3max-error                                61.1299
         dist-from-cluster                         -3.3733
+        dist-from-cluster                         -3.3733
         num-circumference-points                  -0.1937
         circumference-degrees                      1.6563
         Intercept                                  0.1564
         """
         u = self.featureVector
-        v = [-25116.8908, 160.6589, 137.7327, 16.6823, 61.1299, -3.3733, -0.1937, 1.6563]
+        v = [-25116.8908, 160.6589, 137.7327, 16.6823, 61.1299, -3.3733, -3.3733, -0.1937, 1.6563]
         hyperplaneProjection = vector_dot(u, v) + 0.1564
         return [hyperplaneProjection > -2.0, hyperplaneProjection]
         
