@@ -9,6 +9,8 @@ import mapmodel
 import particlefilter
 import time
 import math
+import pose as posemodule
+import util
 
 curTime = 0
 timeDiff = 0
@@ -53,22 +55,24 @@ class CircleDetectParametersFrame(wx.Frame):
             self.thresholdCallback(self, threshold)
 
 def coalesceCircles(circles):
-	print "Starting with %d circles" % len(circles)
-	circleCopy = circles[:]
-	for c in circleCopy:
-		for c2 in circleCopy:
-			if c == c2:
-				continue
-			dx = c2.center[0] - c.center[0]
-			dy = c2.center[1] - c.center[1]
-			if math.sqrt( dx*dx + dy*dy ) < 0.75*(c2.radius + c.radius):
-				badCircle = c if c.error > c2.error else c2
-				try:
-					circles.remove(badCircle)
-				except:
-					pass
-	print "Finished with %d circles" % len(circles)
-	return circles
+    #print "Starting with %d circles" % len(circles)
+    #print [[c.center, c.error] for c in circles]
+    circleCopy = circles[:]
+    for c in circleCopy:
+        for c2 in circleCopy:
+            if c == c2:
+                continue
+            dx = c2.center[0] - c.center[0]
+            dy = c2.center[1] - c.center[1]
+            if math.sqrt( dx*dx + dy*dy ) < 0.75*(c2.radius + c.radius):
+                badCircle = c if c.error > c2.error else c2
+                try:
+                    circles.remove(badCircle)
+                except:
+                    pass
+    #print "Finished with %d circles" % len(circles)
+    #print [[c.center, c.error] for c in circles]
+    return circles
 
 def main():
     updateTimes()
@@ -85,6 +89,8 @@ def main():
     updateTimes()
     print "done (%0.2f s)" % (timeDiff)
     print "Actual pose: ", pose.toStr()
+    outPose = mapmodel.mapToWorld([pose.x, pose.y, pose.theta])
+    print "In input coordinate system: ", posemodule.Pose(outPose[0], outPose[1], util.d2r(outPose[2])).toStr()
 
     def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF):
         updateTimes()
@@ -115,10 +121,10 @@ def main():
             for c in actualCircles:
                 mi.drawCircle(pose.inMapFrame([c[1], c[0]]), 0.3, fill=(255, 127, 0))
 
-        print "drawing circle at:",pose.inMapFrame([0,0])
+        #print "drawing circle at:",pose.inMapFrame([0,0])
         #draw the arrow to show the pose
         temp = pose.inMapFrame([0,0])
-        mi.showArrow(temp[0],temp[1],pose.theta)    
+        mi.showArrow(temp[0],temp[1],-pose.theta)    
         try:
             if len(sys.argv) == 1:
                 i = 1
