@@ -24,7 +24,7 @@ class ParticleFilter:
         bounds = [1, 1, util.d2r(5)]
         self.poseSet.initializeUniformStochastic( [initialPose.x-bounds[0], initialPose.x+bounds[0]], [initialPose.y-bounds[1], initialPose.y+bounds[1]], [initialPose.theta-bounds[2], initialPose.theta+bounds[2]] )
         self.laser = laser  # already initialized
-        self.mapThresh = 0.2    # maximum distance to be part of the map
+        self.mapThresh = 0.3    # maximum distance to be part of the map
   
 
     # Initializes the profiler or just runs the main loop
@@ -93,8 +93,8 @@ class ParticleFilter:
             if pose.weight > maxWeight:
                 maxWeight = pose.weight
                 best = pose
-        self.normalizeWeights()
-        self.resampleStep() # not sure if we should still do this
+        #self.normalizeWeights()
+        #self.resampleStep() # not sure if we should still do this
         self.updatePoseAverage()
         return best
 
