@@ -12,7 +12,10 @@ DEFAULT_CUTOFF = 0.00034
 
 def readHw4Input():
     if len(sys.argv) > 1:
-        fName = "data/lr" + sys.argv[1] + ".dat"
+        try:
+            fName = "data/lr%i.dat" % int(sys.argv[1])
+        except:
+            fName = sys.argv[1]
     else:
         fName = "data/lr1.dat"
     try:
