@@ -55,7 +55,7 @@ def main():
     updateTimes()
     print "Reading input ...",
     sys.stdout.flush()
-    [pose, laser] = readHw4Input()
+    [pose, laser, actualCircles] = readHw4Input()
     theMap = mapmodel.MapModel()
     updateTimes()
     print "done (%0.2f s)" % (timeDiff)
@@ -91,12 +91,20 @@ def main():
         for pt in objectLasers:
             mi.drawCircle(pose.inMapFrame(pt), .05, fill=(255, 0, 0))
         mi.drawCircle(pose.inMapFrame([0,0]), .3, fill=(255, 0, 255))
+        if actualCircles:
+            for c in actualCircles:
+                mi.drawCircle(pose.inMapFrame(c), 0.05, fill=(255, 127, 0))
+
         print "drawing circle at:",pose.inMapFrame([0,0])
         #draw the arrow to show the pose
         temp = pose.inMapFrame([0,0])
         mi.showArrow(temp[0],temp[1],pose.theta)    
         try:
-            fname = "output%i.png" % (1 if len(sys.argv) == 1 else int(sys.argv[1]))
+            if len(sys.argv) == 1:
+                i = 1
+            else:
+                i = int(sys.argv[1])
+            fname = "output%i.png" % (i)
         except:
             fname = "output.png"
        
