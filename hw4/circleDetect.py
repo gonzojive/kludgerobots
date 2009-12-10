@@ -13,17 +13,19 @@ class Circle:
     def __repr__(self):
         return "<Circle radius %f at %s >" % (self.radius, self.center)
 
-#def nearbyPoints(points, pointIndex, n=5):
-#    i =
+def neighborhoodPoints(points, pointIndex, n=40): # take 40 degrees worth of points
+    numEitherSide = int((n - 1) / 2)
+    #return points[max(0, pointIndex - numEitherSide):pointIndex] + points[pointIndex+1:min(len(points), pointIndex + numEitherSide)]
+    return points[max(0, pointIndex - numEitherSide):min(len(points), pointIndex + numEitherSide)]
 
 # adds linearly interpolated points in between laser readings
-def expandPoints(points):
+def enumerateAndExpandPoints(points):
     for (pointIndex, point) in enumerate(points):
-        yield point
+        yield (pointIndex, point)
         nextPoint = points[pointIndex+1] if pointIndex < len(points) - 1 else None
         if nextPoint:
-            yield vector_scale(vector_add(nextPoint, point), .5)
-    
+            yield (pointIndex, vector_scale(vector_add(nextPoint, point), .5))
+
 
 def findCircles(points, radius, cutoff=hw4.DEFAULT_CUTOFF):
     """
@@ -31,13 +33,13 @@ def findCircles(points, radius, cutoff=hw4.DEFAULT_CUTOFF):
     their centers.
     """
     errorDistribution = []
-    for (pointIndex, point) in enumerate(expandPoints(points)):
+    for (pointIndex, point) in enumerateAndExpandPoints(points):
         # create a hypothetical circle assuming that the given scan
         # point is directly between the robot and the center of the circle
         hypotheticalCircle = Circle(radius, vector_add(point, vector_scale(vector_normalize(point), float(radius))))
         # calculate how far away each other point in the scan set is
         # from the circle
-        distancesFromCenter = [vector_distance(p, hypotheticalCircle.center) for p in points]
+        distancesFromCenter = [vector_distance(p, hypotheticalCircle.center) for p in neighborhoodPoints(points, pointIndex)]
         filteredDistances = filter(lambda d: d < radius + .09, distancesFromCenter)
 
         if len(filteredDistances) == 0:

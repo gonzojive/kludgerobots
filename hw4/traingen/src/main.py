@@ -31,7 +31,9 @@ class Traingen():
     def get_puckCenters(self):
         pucks = [self.pucksDict[puckId] for puckId in self.pucksDict]
         def puckCenter(puck):
-            return self.transformPoint([puck.x, puck.y], "map", "base_laser_ground_truth")
+            tx = self.transformPoint([puck.x, puck.y], "map", "base_laser_ground_truth")
+            rospy.loginfo("Transformed Puck Coord: %f %f." % (tx[0], tx[1]))
+            return tx
             puckAsPoint = PointStamped()
             puckAsPoint.header.stamp = rospy.Time()
             puckAsPoint.header.frame_id = "map"
