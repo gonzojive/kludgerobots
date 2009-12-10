@@ -8,6 +8,7 @@ import sys
 import mapmodel
 import particlefilter
 import time
+import math
 
 curTime = 0
 timeDiff = 0
@@ -51,6 +52,24 @@ class CircleDetectParametersFrame(wx.Frame):
         if self.thresholdCallback:
             self.thresholdCallback(self, threshold)
 
+def coalesceCircles(circles):
+	print "Starting with %d circles" % len(circles)
+	circleCopy = circles[:]
+	for c in circleCopy:
+		for c2 in circleCopy:
+			if c == c2:
+				continue
+			dx = c2.center[0] - c.center[0]
+			dy = c2.center[1] - c.center[1]
+			if math.sqrt( dx*dx + dy*dy ) < 0.75*(c2.radius + c.radius):
+				badCircle = c if c.error > c2.error else c2
+				try:
+					circles.remove(badCircle)
+				except:
+					pass
+	print "Finished with %d circles" % len(circles)
+	return circles
+
 def main():
     updateTimes()
     print "Reading input ...",
@@ -75,6 +94,7 @@ def main():
         mi = MapImage()
         circleDetectPoints = objectLasers # laser.points
         circles = [c for c in findCircles(circleDetectPoints, radius, cutoff)]
+	circles = coalesceCircles(circles)
         
         if len(circles) > 0:
             minError = min(map(lambda x : x.error, circles))
