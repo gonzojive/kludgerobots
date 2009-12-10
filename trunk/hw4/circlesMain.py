@@ -116,14 +116,14 @@ def main():
 
     outputtedTrainingData = [False] # this is an array because Python closures suxxx
 
-    def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF):
+    def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF, training=False):
         updateTimes()
         print "Finding circles ...",
         sys.stdout.flush()
-        radius = .3
+        radius = .25
         mi = MapImage()
         circleDetectPoints = objectLasers # laser.points
-        circles = [c for c in findCircles(circleDetectPoints, radius, cutoff)]
+        circles = [c for c in findCircles(circleDetectPoints, radius, cutoff,training=training)]
 	circles = coalesceCircles(circles)
         
         if len(circles) > 0:
@@ -186,7 +186,7 @@ def main():
     # if we are training, then we find all circles regardless of cutoff and output them to
     # the training data file
     if actualCircles:
-        findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF * 3.0)
+        findAndDrawCircles(cutoff=None,training=True)#hw4.DEFAULT_CUTOFF * 3.0)
 
     if hw4.interactive:
         app = wx.App()
