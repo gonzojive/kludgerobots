@@ -5,6 +5,7 @@ from PIL import Image,ImageDraw
 import util
 from vector import *
 import wx
+from math import *
 
 class MapFrame(wx.Frame):
     def __init__(self, parent, id, title, mapImage):
@@ -97,10 +98,11 @@ class MapImage:
             return False
             
     #function to show an arrow at the given point given an angle
-    def showArrow(self,x,y,angle):
+    def showArrow(self,rawx,rawy,theta):
         #imagePath = "/home/ckalyan/Desktop/cs225b_code/hw4/data/gates-full-stage.png"):
         #arrow starts at point(x,y) and extends a few pixels ahead at the given angle
-        theta = util.d2r(angle) 
+        
+        [x,y] = self.pointToImageXY([rawx,rawy])
         length = 20
         endx = x+ length*cos(theta)
         endy = y+ length*sin(theta)
