@@ -51,12 +51,14 @@ class Circle:
         meanSquaredError = self.meanError
         sortedErrors = self.oneNormedErrors[:]
         sortedErrors.sort()
+        clusterCenter = [1.95, -0.03] # [angleSpanned, meanSquaredError]
+        
         return [meanSquaredError,
                 mean(self.oneNormedErrors),
                 sortedErrors[len(sortedErrors)-1],
                 sortedErrors[len(sortedErrors)-2],
                 sortedErrors[len(sortedErrors)-3],
-                vector_distance([1.85, 0.0000016], [angleSpanned, meanSquaredError]),
+                vector_distance(clusterCenter, [angleSpanned, meanSquaredError]),
 #                vector_length(self.center),
                 len(self.circumferencePoints),
                 angleSpanned]
@@ -108,7 +110,7 @@ def enumerateAndExpandPoints(points):
 CIRCUMFERENCE_TOLERANCE = .09
 MIN_CIRCUMFERENCE_POINTS = 3
 
-def findCircles(points, radius, cutoff=hw4.DEFAULT_CUTOFF):
+def findCircles(points, radius, cutoff=hw4.DEFAULT_CUTOFF, training=False):
     """
     Given a sequence of points relative to the robot, detects circles of a given radius and returns
     their centers.
@@ -147,7 +149,7 @@ def findCircles(points, radius, cutoff=hw4.DEFAULT_CUTOFF):
             #if not cutoff or meanError < cutoff:
             [puckp, projection] = hypotheticalCircle.classify()
             errorDistribution.append(projection)
-            if puckp:
+            if puckp or training:
                 #print "ACCEPTED circle with mean error %f and errors %s" % (meanError, errors)
                 yield hypotheticalCircle
             elif meanError < .02:

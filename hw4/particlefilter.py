@@ -26,7 +26,7 @@ class ParticleFilter:
         self.poseSet = pose.PoseSet(NUM_PARTICLES)   # Number of poses to try
         # Kurt says position is within 1m and about 5 degrees of accurate
         #bounds = [1, 1, util.d2r(5)]
-        bounds = [1, 1, util.d2r(20)]
+        bounds = [1, 1, util.d2r(365)]
         self.poseSet.initializeUniformStochastic( [initialPose.x-bounds[0], initialPose.x+bounds[0]], [initialPose.y-bounds[1], initialPose.y+bounds[1]], [initialPose.theta-bounds[2], initialPose.theta+bounds[2]] )
         self.laser = laser  # already initialized
         self.mapThresh = 0.3    # maximum distance to be part of the map

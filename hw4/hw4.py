@@ -6,7 +6,7 @@ import pose
 import math
 import sys
 
-interactive = True #False
+interactive = False
 training = False
 
 DEFAULT_CUTOFF = 0.00034
