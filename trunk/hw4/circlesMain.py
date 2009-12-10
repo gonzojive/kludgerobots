@@ -19,7 +19,7 @@ def updateTimes():
     curTime += timeDiff
 
 class CircleDetectParametersFrame(wx.Frame):
-    def __init__(self, parent, id, title, thresholdCallback=None, minThreshold=0.0, maxThreshold=.001):
+    def __init__(self, parent, id, title, thresholdCallback=None, minThreshold=0.0, maxThreshold=.002):
         wx.Frame.__init__(self, parent, id, title, size = (200, 200))
         panel = wx.Panel(self, -1)
         box = wx.BoxSizer(wx.HORIZONTAL)
@@ -73,7 +73,8 @@ def main():
         sys.stdout.flush()
         radius = .3
         mi = MapImage()
-        circles = [c for c in findCircles(laser.points, radius, cutoff)]
+        circleDetectPoints = objectLasers # laser.points
+        circles = [c for c in findCircles(circleDetectPoints, radius, cutoff)]
         
         if len(circles) > 0:
             minError = min(map(lambda x : x.error, circles))
