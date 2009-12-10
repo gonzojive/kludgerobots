@@ -9,11 +9,16 @@ import mapmodel
 import particlefilter
 import time
 import math
+import os
+from vector import *
 import pose as posemodule
 import util
 
+
 curTime = 0
 timeDiff = 0
+
+TRUE_POSITIVE_DISTANCE_CUTOFF = .16 # must estimate a circle within .1 meters for it to count as a "true positive"
 
 def updateTimes():
     global curTime
@@ -74,6 +79,23 @@ def coalesceCircles(circles):
     #print [[c.center, c.error] for c in circles]
     return circles
 
+def outputArffHeader(f):
+    f.write("""% CS225b final project training input file for WEKA
+@relation pucks
+@attribute 'mean-squared-error' real
+@attribute 'mean-1norm-error' real
+@attribute 'max-error' real
+@attribute '2max-error' real
+@attribute '3max-error' real
+@attribute 'dist-from-cluster' real
+%@attribute 'distance-to-center' real
+@attribute 'num-circumference-points' real
+@attribute 'circumference-degrees' real
+@attribute 'class' {'puck','not-puck'}
+@data
+""")
+    
+
 def main():
     updateTimes()
     print "Reading input ...",
@@ -91,6 +113,8 @@ def main():
     print "Actual pose: ", pose.toStr()
     outPose = mapmodel.mapToWorld([pose.x, pose.y, pose.theta])
     print "In input coordinate system: ", posemodule.Pose(outPose[0], outPose[1], util.d2r(outPose[2])).toStr()
+
+    outputtedTrainingData = [False] # this is an array because Python closures suxxx
 
     def findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF):
         updateTimes()
@@ -118,8 +142,27 @@ def main():
             mi.drawCircle(pose.inMapFrame(pt), .05, fill=(255, 0, 0))
         mi.drawCircle(pose.inMapFrame([0,0]), .3, fill=(255, 0, 255))
         if actualCircles:
+            # draw them
             for c in actualCircles:
-                mi.drawCircle(pose.inMapFrame([c[1], c[0]]), 0.3, fill=(255, 127, 0))
+                mi.drawCircle(pose.inMapFrame([c[0], c[1]]), 0.3, fill=(255, 127, 0))
+
+            if not outputtedTrainingData[0]:
+                outputtedTrainingData[0] = True
+                # now output training data to train.arff
+                if os.path.exists("train.arff"):
+                    f = open("train.arff", 'a')
+                else:
+                    f = open("train.arff", 'w')
+                    outputArffHeader(f)
+
+                f.write("% circles for single session:\n")
+
+                for c in circles:
+                    tpDistance = min(map(lambda tp: vector_distance(c.center, tp), actualCircles))
+                    c.knownClass = "puck" if tpDistance <= TRUE_POSITIVE_DISTANCE_CUTOFF else "not-puck"
+                    f.write("%s%s\n" % (c.arffLine(), "")) #"%f away from nearest actual puck" % tpDistance))
+
+                f.close()
 
         #print "drawing circle at:",pose.inMapFrame([0,0])
         #draw the arrow to show the pose
@@ -139,7 +182,11 @@ def main():
         print "done (%0.2f s)" % (timeDiff)
         #mi.show()
         return mi
-            
+
+    # if we are training, then we find all circles regardless of cutoff and output them to
+    # the training data file
+    if actualCircles:
+        findAndDrawCircles(cutoff=hw4.DEFAULT_CUTOFF * 3.0)
 
     if hw4.interactive:
         app = wx.App()
@@ -152,6 +199,10 @@ def main():
         controlFrame.Show()
         mframe.Show()
         app.MainLoop()
+    else:
+        findAndDrawCircles()
+
+    
         
             
 

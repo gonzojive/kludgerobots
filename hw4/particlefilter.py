@@ -13,15 +13,20 @@ context = None
 def profiledParticleFilter():
     return context.mainLoop()
 
+NUM_PARTICLES = 5000
+PFILTER_DIST_THRESH = 1.35
+MAPP_DIST_THRESH = .10 #PFILTER_DIST_THRESH #.15
+
 # Particle filter, specialized for the final project
 class ParticleFilter:
     def __init__(self, mapModel, initialPose, laser):
         global context
         context = self
         self.mapModel = mapModel    # already initialized by main
-        self.poseSet = pose.PoseSet(5000)   # Number of poses to try
+        self.poseSet = pose.PoseSet(NUM_PARTICLES)   # Number of poses to try
         # Kurt says position is within 1m and about 5 degrees of accurate
-        bounds = [1, 1, util.d2r(5)]
+        #bounds = [1, 1, util.d2r(5)]
+        bounds = [1, 1, util.d2r(20)]
         self.poseSet.initializeUniformStochastic( [initialPose.x-bounds[0], initialPose.x+bounds[0]], [initialPose.y-bounds[1], initialPose.y+bounds[1]], [initialPose.theta-bounds[2], initialPose.theta+bounds[2]] )
         self.laser = laser  # already initialized
         self.mapThresh = 0.3    # maximum distance to be part of the map
@@ -134,7 +139,7 @@ class ParticleFilter:
         objectLasers = []
         #print "Using distance cutoff = %0.2f to classify lasers" % (self.mapThresh)
         for i in range(len(laserVecs)):
-            if dists[i] >= self.mapThresh:   # doesn't fit in the map
+            if dists[i] >= MAPP_DIST_THRESH: #self.mapThresh:   # doesn't fit in the map
                 objectLasers.append(laserVecs[i])
             else:   # close enough to the map
                 mapLasers.append(laserVecs[i])
@@ -145,7 +150,7 @@ class ParticleFilter:
     def pLaserBeamGivenPose(self, vLaserBeam, pose):
         vLaserBeamInMapFrame = pose.inMapFrame(vLaserBeam)
         d = self.mapModel.distanceFromObstacleAtPoint(vLaserBeamInMapFrame)
-        if d > self.mapThresh and self.mapModel.pointInBounds(vLaserBeamInMapFrame):
+        if d > PFILTER_DIST_THRESH and self.mapModel.pointInBounds(vLaserBeamInMapFrame):
             return 1
         stdDev = 0.2
         pGauss = statutil.gaussianProbability(0, stdDev, d)
